@@ -2,7 +2,10 @@
 *.pyo
 *.pyd
 __pycache__
+*.py[cod]
+*$py.class
 
+*zip
 *~
 *.swp
 ._*
