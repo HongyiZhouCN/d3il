@@ -38,6 +38,9 @@ def main(cfg: DictConfig) -> None:
     agent = hydra.utils.instantiate(cfg.agents)
     
     # TODO: insert agent.load_pretrained_model() here with relative path
+    path = "/home/hongyi/Codes/demo_acc_rl/d3il/logs/avoiding/sweeps/beso/2024-03-11/16-06-09/agent_name=beso,agents.num_sampling_steps=4,agents.sigma_max=1,agents.sigma_min=0.1,agents=beso_agent,seed=0,window_size=1"
+    sv_name = "eval_best_beso.pth"
+    agent.load_pretrained_model(path, sv_name=sv_name)
 
     env_sim = hydra.utils.instantiate(cfg.simulation)
     env_sim.test_agent(agent)

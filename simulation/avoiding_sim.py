@@ -32,7 +32,7 @@ class Avoiding_Sim(BaseSim):
 
     def eval_agent(self, agent, n_trajectories, mode_encoding, successes, robot_c_pos, pid, cpu_set):
 
-        print(os.getpid(), cpu_set)
+        # print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
 
         env = ObstacleAvoidanceEnv(render=self.render)
@@ -46,7 +46,7 @@ class Avoiding_Sim(BaseSim):
 
             agent.reset()
 
-            print(f'core {pid}, Rollout {i}')
+            # print(f'core {pid}, Rollout {i}')
 
             obs = env.reset()
 
@@ -54,7 +54,7 @@ class Avoiding_Sim(BaseSim):
             fixed_z = pred_action[2:]
             done = False
 
-            c_pos = [env.robot.current_c_pos]
+            # c_pos = [env.robot.current_c_pos]
 
             while not done:
 
@@ -67,10 +67,10 @@ class Avoiding_Sim(BaseSim):
 
                 obs, reward, done, info = env.step(pred_action)
 
-                c_pos.append(env.robot.current_c_pos)
+                # c_pos.append(env.robot.current_c_pos)
 
-            c_pos = torch.tensor(np.array(c_pos))[:, :2]
-            robot_c_pos[pid * n_trajectories + i, :c_pos.shape[0], :] = c_pos
+            # c_pos = torch.tensor(np.array(c_pos))[:, :2]
+            # robot_c_pos[pid * n_trajectories + i, :c_pos.shape[0], :] = c_pos
 
             mode_encoding[pid * n_trajectories + i, :] = torch.tensor(info[0])
             successes[pid * n_trajectories + i] = torch.tensor(info[1])
@@ -82,21 +82,22 @@ class Avoiding_Sim(BaseSim):
     ###############################
     def test_agent(self, agent):
 
-        log.info('Starting trained model evaluation')
+        # log.info('Starting trained model evaluation')
 
         robot_c_pos = torch.zeros([self.n_trajectories, 150, 2]).share_memory_()
 
         mode_encoding = torch.zeros([self.n_trajectories, 9]).share_memory_()
         successes = torch.zeros(self.n_trajectories).share_memory_()
 
-        num_cpu = mp.cpu_count()
+        num_cpu = mp.cpu_count() // 2
+        self.n_cores = min(self.n_cores, num_cpu)
         cpu_set = list(range(num_cpu))
 
         # start = self.seed * 20
         # end = start + 20
         #
         # cpu_set = cpu_set[start:end]
-        print("there are cpus: ", num_cpu)
+        # print("there are cpus: ", num_cpu)
 
         ctx = mp.get_context('spawn')
 
@@ -115,7 +116,7 @@ class Avoiding_Sim(BaseSim):
                         "cpu_set": set(cpu_set[i:i + 1])
                     },
                 )
-                print("Start {}".format(i))
+                # print("Start {}".format(i))
                 p.start()
                 p_list.append(p)
             [p.join() for p in p_list]
@@ -125,7 +126,7 @@ class Avoiding_Sim(BaseSim):
             
         # TODO: save robot_c_pos
 
-        success_rate = torch.mean(successes).item()
+        # success_rate = torch.mean(successes).item()
 
         # calculate entropy
         data = mode_encoding[successes == 1].numpy()
@@ -134,11 +135,11 @@ class Avoiding_Sim(BaseSim):
         mode_dist = counts / np.sum(counts)
         entropy = - np.sum(mode_dist * (np.log(mode_dist) / np.log(24)))
 
-        wandb.log({'score': (success_rate * 0.8 + entropy * 0.2)})
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/entropy': entropy})
+        # wandb.log({'score': (success_rate * 0.8 + entropy * 0.2)})
+        # wandb.log({'Metrics/successes': success_rate})
+        # wandb.log({'Metrics/entropy': entropy})
 
-        print(f'Successrate {success_rate}')
-        print(f'entropy {entropy}')
+        # print(f'Successrate {success_rate}')
+        # print(f'entropy {entropy}')
 
         return successes, entropy

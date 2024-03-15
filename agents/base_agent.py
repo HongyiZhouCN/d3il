@@ -64,13 +64,13 @@ class BaseAgent(abc.ABC):
 
         total_params = sum(p.numel() for p in self.model.get_params())
 
-        wandb.log(
-            {
-                "model parameters": total_params
-            }
-        )
-
-        log.info("The model has a total amount of {} parameters".format(total_params))
+        # wandb.log(
+        #     {
+        #         "model parameters": total_params
+        #     }
+        # )
+        #
+        # log.info("The model has a total amount of {} parameters".format(total_params))
 
     def train(self):
 

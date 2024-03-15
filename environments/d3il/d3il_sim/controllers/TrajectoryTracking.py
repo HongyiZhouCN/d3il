@@ -436,7 +436,7 @@ class OfflineIKTrajectoryGenerator(TrajectoryGenerator):
 
             i += 1
 
-        print("Final IK error (%d iterations):  %s" % (i, errNorm))
+        # print("Final IK error (%d iterations):  %s" % (i, errNorm))
 
         logging.getLogger(__name__).debug(
             "Final IK error (%d iterations):  %s" % (i, errNorm)
