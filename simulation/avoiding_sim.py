@@ -89,8 +89,9 @@ class Avoiding_Sim(BaseSim):
         mode_encoding = torch.zeros([self.n_trajectories, 9]).share_memory_()
         successes = torch.zeros(self.n_trajectories).share_memory_()
 
-        num_cpu = mp.cpu_count() // 2
-        self.n_cores = min(self.n_cores, num_cpu)
+        num_cpu = mp.cpu_count()
+        # self.n_cores = min(self.n_cores, num_cpu)
+        self.n_cores = max(num_cpu, 1)
         cpu_set = list(range(num_cpu))
 
         # start = self.seed * 20
