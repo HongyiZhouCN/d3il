@@ -1,5 +1,5 @@
 python run.py --config-name=avoiding_config \
-              --multirun seed=0,1,2,3,4,5 \
+              --multirun seed=0 \
               agents=beso_agent \
               agent_name=beso \
               window_size=1 \

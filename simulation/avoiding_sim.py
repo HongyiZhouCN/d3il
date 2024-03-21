@@ -89,7 +89,7 @@ class Avoiding_Sim(BaseSim):
         mode_encoding = torch.zeros([self.n_trajectories, 9]).share_memory_()
         successes = torch.zeros(self.n_trajectories).share_memory_()
 
-        num_cpu = mp.cpu_count()
+        num_cpu = mp.cpu_count()//4
         # self.n_cores = min(self.n_cores, num_cpu)
         self.n_cores = max(num_cpu, 1)
         cpu_set = list(range(num_cpu))
@@ -127,7 +127,6 @@ class Avoiding_Sim(BaseSim):
             
         # TODO: save robot_c_pos
 
-        # success_rate = torch.mean(successes).item()
 
         # calculate entropy
         data = mode_encoding[successes == 1].numpy()
@@ -135,10 +134,12 @@ class Avoiding_Sim(BaseSim):
         _, counts = np.unique(data_decimal, return_counts=True)
         mode_dist = counts / np.sum(counts)
         entropy = - np.sum(mode_dist * (np.log(mode_dist) / np.log(24)))
-
-        # wandb.log({'score': (success_rate * 0.8 + entropy * 0.2)})
-        # wandb.log({'Metrics/successes': success_rate})
-        # wandb.log({'Metrics/entropy': entropy})
+        
+        #TODO: only for model training
+        success_rate = torch.mean(successes).item()
+        #wandb.log({'score': (success_rate * 0.8 + entropy * 0.2)})
+        #wandb.log({'Metrics/successes': success_rate})
+        #wandb.log({'Metrics/entropy': entropy})
 
         # print(f'Successrate {success_rate}')
         # print(f'entropy {entropy}')
