@@ -80,7 +80,7 @@ class Avoiding_Sim(BaseSim):
     # n_trajectories: rollout policy for n times
     # n_cores: the number of cores used for simulation
     ###############################
-    def test_agent(self, agent):
+    def test_agent(self, agent, cpu_cores=None):
 
         # log.info('Starting trained model evaluation')
 
@@ -89,10 +89,12 @@ class Avoiding_Sim(BaseSim):
         mode_encoding = torch.zeros([self.n_trajectories, 9]).share_memory_()
         successes = torch.zeros(self.n_trajectories).share_memory_()
 
-        num_cpu = mp.cpu_count()
+        # num_cpu = mp.cpu_count()
         # self.n_cores = min(self.n_cores, num_cpu)
-        self.n_cores = max(num_cpu, 1)
-        cpu_set = list(range(num_cpu))
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 1
+        cpu_cores = list(cpu_cores)
+        # self.n_cores = max(num_cpu, 1)
+        # cpu_set = list(range(num_cpu))
 
         # start = self.seed * 20
         # end = start + 20
@@ -114,7 +116,7 @@ class Avoiding_Sim(BaseSim):
                         "successes": successes,
                         "robot_c_pos": robot_c_pos,
                         "pid": i,
-                        "cpu_set": set(cpu_set[i:i + 1])
+                        "cpu_set": set([int(cpu_cores[i])])
                     },
                 )
                 # print("Start {}".format(i))
