@@ -12,7 +12,7 @@ wandb:
   entity: zhouhongyi
   project: d3il
 
-group: avoiding_beso_residualmlp8x1024_epoch4000
+group: avoiding_beso_residualmlp8x1024_epoch2500_cluster_test_upload
 
 hydra:
   run:
@@ -73,6 +73,6 @@ simulation:
   _target_: simulation.avoiding_sim.Avoiding_Sim
   seed: ${seed}
   device: ${device}
-  render: True
-  n_cores: 1
+  render: False
+  n_cores: 24
   n_trajectories: 480

@@ -31,7 +31,7 @@ conda install mamba -c conda-forge -y -q
 ############ REQUIRED DEPENDENCIES (PYBULLET) ############
 echo Installing dependencies...
 
-mamba install -c conda-forge pytorch==1.13.0 torchvision==0.14.0
+# mamba install -c conda-forge pytorch==1.13.0 torchvision==0.14.0
 
 mamba install -c conda-forge pybullet pyyaml scipy opencv pinocchio matplotlib gin-config gym==0.21.0 -y -q
 
