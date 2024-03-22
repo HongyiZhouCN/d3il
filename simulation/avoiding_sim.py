@@ -90,8 +90,8 @@ class Avoiding_Sim(BaseSim):
         successes = torch.zeros(self.n_trajectories).share_memory_()
 
         # self.n_cores = min(self.n_cores, num_cpu)
-        self.n_cores = len(cpu_cores) if cpu_cores is not None else 1
-        cpu_cores = list(cpu_cores)
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
+        cpu_cores = list(cpu_cores) if cpu_cores is not None else list(range(10))
         # self.n_cores = max(num_cpu, 1)
         # cpu_set = list(range(num_cpu))
 
