@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm
 
-from beso.networks.utils import return_activiation_fcn
-from beso.networks.mlps.res_layers import TwoLayerPreActivationResNetLinear
+from agents.models.beso.networks.utils import return_activiation_fcn
+from agents.models.beso.networks.mlps.res_layers import TwoLayerPreActivationResNetLinear
 
 
 class MLPNetwork(nn.Module):

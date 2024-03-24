@@ -1,22 +1,22 @@
 #!/bin/bash
 
 ############# GENERAL ENV SETUP ############
-#echo New Environment Name:
-#read envname
-#
-#echo Creating new conda environment $envname
-#conda create -n $envname python=3.10.8 -y -q
-#
-#eval "$(conda shell.bash hook)"
-#conda activate $envname
-#
-#echo
-#echo Activating $envname
-#if [[ "$CONDA_DEFAULT_ENV" != "$envname" ]]
-#then
-#    echo Failed to activate conda environment.
-#    exit 1
-#fi
+echo New Environment Name:
+read envname
+
+echo Creating new conda environment $envname
+conda create -n $envname python=3.10.8 -y -q
+
+eval "$(conda shell.bash hook)"
+conda activate $envname
+
+echo
+echo Activating $envname
+if [[ "$CONDA_DEFAULT_ENV" != "$envname" ]]
+then
+    echo Failed to activate conda environment.
+    exit 1
+fi
 
 ### Set Channel vars
 conda config --add channels conda-forge
@@ -32,6 +32,7 @@ conda install mamba -c conda-forge -y -q
 echo Installing dependencies...
 
 # mamba install -c conda-forge pytorch==1.13.0 torchvision==0.14.0
+mamba install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia
 
 mamba install -c conda-forge pybullet pyyaml scipy opencv pinocchio matplotlib gin-config gym==0.21.0 -y -q
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from beso.networks.utils import return_activiation_fcn
+from agents.models.beso.networks.utils import return_activiation_fcn
 
 
 class TwoLayerPreActivationResNetLinear(nn.Module):

@@ -40,7 +40,7 @@ model:
     hidden_dim: ${hidden_dim}
     goal_dim: ${goal_dim}
     embed_fn:
-      _target_: beso.agents.diffusion_agents.k_diffusion.utils.return_time_sigma_embedding_model
+      _target_: agents.models.beso.agents.diffusion_agents.k_diffusion.utils.return_time_sigma_embedding_model
        # 'GaussianFourier' 'FourierFeatures' or 'Sinusoidal'
       embedding_type: 'GaussianFourier'
       time_embed_dim: ${hidden_dim} # ${t_dim} # ${hidden_dim}

@@ -11,7 +11,7 @@ from einops import rearrange, repeat
 import torch.nn.functional as F
 
 
-from beso.networks.vision_modules.vision_modules import GlobalAvgPool2d, GlobalMaxPool2d, SpatialSoftArgmax
+from agents.models.beso.networks.vision_modules.vision_modules import GlobalAvgPool2d, GlobalMaxPool2d, SpatialSoftArgmax
 
 
 class SinusoidalPosEmb(nn.Module):
