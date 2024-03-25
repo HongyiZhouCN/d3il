@@ -1,5 +1,6 @@
 import logging
-import multiprocessing as mp
+# import multiprocessing as mp
+import torch.multiprocessing as mp
 import os
 import random
 from envs.gym_avoiding_env.gym_avoiding.envs.avoiding import ObstacleAvoidanceEnv
@@ -138,11 +139,11 @@ class Avoiding_Sim(BaseSim):
         
         #TODO: only for model training
         success_rate = torch.mean(successes).item()
-        #wandb.log({'score': (success_rate * 0.8 + entropy * 0.2)})
-        #wandb.log({'Metrics/successes': success_rate})
-        #wandb.log({'Metrics/entropy': entropy})
+        wandb.log({'score': (success_rate * 0.8 + entropy * 0.2)})
+        wandb.log({'Metrics/successes': success_rate})
+        wandb.log({'Metrics/entropy': entropy})
 
-        # print(f'Successrate {success_rate}')
-        # print(f'entropy {entropy}')
+        print(f'Successrate {success_rate}')
+        print(f'entropy {entropy}')
 
         return successes, entropy
