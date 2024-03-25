@@ -32,7 +32,7 @@ class GaussianFourierProjection(nn.Module):
         self.W = nn.Parameter(torch.randn(embed_dim // 2) * scale, requires_grad=False)
 
     def forward(self, x):
-        x_proj = x[:, None] * self.W[None, :] * 2 * np.pi
+        x_proj = x[..., None] * self.W[None, :] * 2 * np.pi
         return torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1)
     
 
