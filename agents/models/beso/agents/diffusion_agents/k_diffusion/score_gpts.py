@@ -277,12 +277,18 @@ class DiffusionGPT(nn.Module):
         sigma,
         uncond: Optional[bool] =False,
         keep_last_actions: Optional[bool] = False
-    ):  
-        b, t, dim = states.size()
+    ):
+        if len(states.shape) == 3:
+            b, t, dim = states.size()
+        elif len(states.shape) == 5:
+            b, t, n_cmps, vi_samples, dim = states.size()
         assert t <= self.block_size, "Cannot forward, model block size is exhausted."
         # get the sigma embedding
         sigmas = sigma.log() / 4
-        sigmas = einops.rearrange(sigmas, 'b -> b 1')
+        if len(sigmas.shape) == 1:
+            sigmas = einops.rearrange(sigmas, 'b -> b 1')
+        elif len(sigmas.shape) == 4:
+            sigmas = einops.rearrange(sigmas, 'b c v d -> b c v d 1')
         emb_t = self.sigma_emb(sigmas.to(torch.float32))
         if len(states.shape) == 3 and len(emb_t.shape) == 2:
             emb_t = einops.rearrange(emb_t, 'b d -> b 1 d')
@@ -322,37 +328,45 @@ class DiffusionGPT(nn.Module):
         # for all states s_1, .., s_t otherwise the masking would not make sense
         if self.goal_conditioned:
             goal_x = self.drop(goal_embed + position_embeddings[:, :self.goal_seq_len, :])
-        state_x = self.drop(state_embed + position_embeddings[:, self.goal_seq_len:, :])
+
+        ## TODO: find a better way to handle the broadcasted time embedding
+        state_x = self.drop(state_embed + position_embeddings[:, self.goal_seq_len:, :].view(position_embeddings.shape[:-1] + (1,1) + (position_embeddings.shape[-1],)))
         # the action get the same position embedding as the related states 
-        action_x = self.drop(action_embed + position_embeddings[:, self.goal_seq_len:, :])
+        action_x = self.drop(action_embed + position_embeddings[:, self.goal_seq_len:, :].view(position_embeddings.shape[:-1] + (1,1) + (position_embeddings.shape[-1],)))
         
         # now for the complicated part
         # we need to stack the input in the following order:
         # [sigma_emb, s_g1, .., sg_n, s_1, a_1, s_2, a_2, ..., s_n, a_n]
         # first stack actions and states in the way: [s_1, a_1, s_2, a_2, ..,]
+        # sa_seq = torch.stack([state_x, action_x], dim=1
+        #                     ).permute(0, 2, 1, 3).reshape(b, 2*t, self.embed_dim)
         sa_seq = torch.stack([state_x, action_x], dim=1
-                            ).permute(0, 2, 1, 3).reshape(b, 2*t, self.embed_dim)
-        
-        # next we stack everything together 
+                             ).permute(0, 2, 1, 3, 4, 5).reshape(b, 2 * t, n_cmps, vi_samples, self.embed_dim)
+        # next we stack everything together
         if self.goal_conditioned:
             input_seq = torch.cat([emb_t, goal_x, sa_seq], dim=1)
         else:
             input_seq = torch.cat([emb_t, sa_seq], dim=1)
-        
+
+        ##TODO: swap the dimensions of the input_seq tensor
+        input_seq = einops.rearrange(input_seq, 'b t n v d -> (b n v) t d')
+
         # Note we need to also adept the action masks 
         x = self.blocks(input_seq)
         x = self.ln_f(x)
-        
+
+        x = einops.rearrange(x, '(b n v) t d -> b t n v d', b=b, n=n_cmps, v=vi_samples)
+
         # now we want the last half of the output
-        x = x[:, second_half_idx:, :]
+        x = x[:, second_half_idx:, ...]
         # returns (0), states (1), or actions (2); i.e. x[:,1,t] is the token for s_t
         # we need to check this for inference and adapt the max seq len accord
         if x.size()[1] < 2*self.obs_seq_len:
             x_len = int(x.size()[1]/2)
             x = x.reshape(b, x_len, 2, self.embed_dim).permute(0, 2, 1, 3)
         else:
-            x = x.reshape(b, self.obs_seq_len, 2, self.embed_dim).permute(0, 2, 1, 3)
-        # get the outputs related to the actions
+            # x = x.reshape(b, self.obs_seq_len, 2, self.embed_dim).permute(0, 2, 1, 3)
+            x = x.reshape(b, self.obs_seq_len, 2, n_cmps, vi_samples, self.embed_dim).permute(0, 2, 1, 3, 4, 5)
         action_outputs = x[:, 1]
         pred_actions = self.action_pred(action_outputs)
         if keep_last_actions:
