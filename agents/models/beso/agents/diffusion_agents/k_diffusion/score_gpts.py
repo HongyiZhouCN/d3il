@@ -281,7 +281,7 @@ class DiffusionGPT(nn.Module):
         if len(states.shape) == 3:
             b, t, dim = states.size()
         elif len(states.shape) == 5:
-            b, t, n_cmps, vi_samples, dim = states.size()
+            b, n_cmps, vi_samples, t, dim = states.size()
         assert t <= self.block_size, "Cannot forward, model block size is exhausted."
         # get the sigma embedding
         sigmas = sigma.log() / 4
@@ -329,40 +329,44 @@ class DiffusionGPT(nn.Module):
         if self.goal_conditioned:
             goal_x = self.drop(goal_embed + position_embeddings[:, :self.goal_seq_len, :])
 
+        pos_embeddings = position_embeddings[:, self.goal_seq_len:, :]
+        pos_embeddings = einops.repeat(pos_embeddings, '1 t d -> b n v t d', b=b, n=n_cmps, v=vi_samples)
         ## TODO: find a better way to handle the broadcasted time embedding
-        state_x = self.drop(state_embed + position_embeddings[:, self.goal_seq_len:, :].view(position_embeddings.shape[:-1] + (1,1) + (position_embeddings.shape[-1],)))
+        state_x = self.drop(state_embed + pos_embeddings)
         # the action get the same position embedding as the related states 
-        action_x = self.drop(action_embed + position_embeddings[:, self.goal_seq_len:, :].view(position_embeddings.shape[:-1] + (1,1) + (position_embeddings.shape[-1],)))
+        action_x = self.drop(action_embed + pos_embeddings)
         
         # now for the complicated part
         # we need to stack the input in the following order:
         # [sigma_emb, s_g1, .., sg_n, s_1, a_1, s_2, a_2, ..., s_n, a_n]
         # first stack actions and states in the way: [s_1, a_1, s_2, a_2, ..,]
-        # sa_seq = torch.stack([state_x, action_x], dim=1
-        #                     ).permute(0, 2, 1, 3).reshape(b, 2*t, self.embed_dim)
-        sa_seq = torch.stack([state_x, action_x], dim=1
-                             ).permute(0, 2, 1, 3, 4, 5).reshape(b, 2 * t, n_cmps, vi_samples, self.embed_dim)
+        if len(state_x.size()) == 3:
+            sa_seq = torch.stack([state_x, action_x], dim=1
+                                ).permute(0, 2, 1, 3).reshape(b, 2*t, self.embed_dim)
+        elif len(state_x.size()) == 5:
+            sa_seq = torch.stack([state_x, action_x], dim=-3
+                                 ).permute(0, 1, 2, 4, 3, 5).reshape(b, n_cmps, vi_samples, 2 * t, self.embed_dim)
         # next we stack everything together
         if self.goal_conditioned:
             input_seq = torch.cat([emb_t, goal_x, sa_seq], dim=1)
         else:
-            input_seq = torch.cat([emb_t, sa_seq], dim=1)
+            input_seq = torch.cat([emb_t, sa_seq], dim=-2)
 
         ##TODO: swap the dimensions of the input_seq tensor
-        input_seq = einops.rearrange(input_seq, 'b t n v d -> (b n v) t d')
+        input_seq = einops.rearrange(input_seq, 'b n v t d -> (b n v) t d')
 
         # Note we need to also adept the action masks 
         x = self.blocks(input_seq)
         x = self.ln_f(x)
 
-        x = einops.rearrange(x, '(b n v) t d -> b t n v d', b=b, n=n_cmps, v=vi_samples)
+        x = einops.rearrange(x, '(b n v) t d -> b n v t d', b=b, n=n_cmps, v=vi_samples)
 
         # now we want the last half of the output
-        x = x[:, second_half_idx:, ...]
+        x = x[..., second_half_idx:, :]
         # returns (0), states (1), or actions (2); i.e. x[:,1,t] is the token for s_t
         # we need to check this for inference and adapt the max seq len accord
-        if x.size()[1] < 2*self.obs_seq_len:
-            x_len = int(x.size()[1]/2)
+        if x.size()[-2] < 2*self.obs_seq_len:
+            x_len = int(x.size()[-2]/2)
             x = x.reshape(b, x_len, 2, self.embed_dim).permute(0, 2, 1, 3)
         else:
             # x = x.reshape(b, self.obs_seq_len, 2, self.embed_dim).permute(0, 2, 1, 3)
