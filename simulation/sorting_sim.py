@@ -1,7 +1,8 @@
 import logging
 import os
 
-import multiprocessing as mp
+# import multiprocessing as mp
+import torch.multiprocessing as mp
 import random
 
 from envs.gym_sorting_env.gym_sorting.envs.sorting import Sorting_Env
@@ -58,7 +59,7 @@ class Sorting_Sim(BaseSim):
 
     def eval_agent(self, agent, contexts, n_trajectories, mode_encoding, successes, mean_distance, pid, cpu_set):
 
-        print(os.getpid(), cpu_set)
+        # print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
 
         env = Sorting_Env(max_steps_per_episode=self.max_steps_per_episode, render=self.render, num_boxes=self.num_box, if_vision=self.if_vision)
@@ -141,7 +142,7 @@ class Sorting_Sim(BaseSim):
     # n_trajectories_per_context: test each context for n times, this is mostly used for multi-modal data
     # n_cores: the number of cores used for simulation
     ###############################
-    def test_agent(self, agent):
+    def test_agent(self, agent, cpu_cores=None):
 
         log.info('Starting trained model evaluation')
 
@@ -153,14 +154,16 @@ class Sorting_Sim(BaseSim):
 
         workload = self.n_contexts // self.n_cores
 
-        num_cpu = mp.cpu_count()
-        cpu_set = list(range(num_cpu))
+        # num_cpu = mp.cpu_count()
+        # cpu_set = list(range(num_cpu))
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 1
+        cpu_cores = list(cpu_cores) if cpu_cores is not None else list(range(1))
 
         # start = self.seed * 20
         # end = start + 20
         #
         # cpu_set = cpu_set[start:end]
-        print("there are cpus: ", num_cpu)
+        # print("there are cpus: ", num_cpu)
 
         ctx = mp.get_context('spawn')
 
@@ -177,10 +180,10 @@ class Sorting_Sim(BaseSim):
                         "successes": successes,
                         "mean_distance": mean_distance,
                         "pid": i,
-                        "cpu_set": set(cpu_set[i:i+1])
+                        "cpu_set": set([int(cpu_cores[i])]) #set(cpu_set[i:i+1])
                     },
                 )
-                print("Start {}".format(i))
+                # print("Start {}".format(i))
                 p.start()
                 p_list.append(p)
             [p.join() for p in p_list]
@@ -191,31 +194,31 @@ class Sorting_Sim(BaseSim):
         success_rate = torch.mean(successes).item()
         mode_probs = torch.zeros([self.n_contexts, self.n_mode])
 
-        for c in range(self.n_contexts):
+        # for c in range(self.n_contexts):
+        #
+        #     for num in range(self.n_mode):
+        #         mode_probs[c, num] = torch.tensor(
+        #             [sum(mode_encoding[c, successes[c, :] == 1] == self.mode_keys[num]) / self.n_trajectories_per_context])
+        #
+        # mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
+        # print(f'p(m|c) {mode_probs}')
 
-            for num in range(self.n_mode):
-                mode_probs[c, num] = torch.tensor(
-                    [sum(mode_encoding[c, successes[c, :] == 1] == self.mode_keys[num]) / self.n_trajectories_per_context])
-
-        mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
-        print(f'p(m|c) {mode_probs}')
-
-        mode_probs = mode_probs[torch.nonzero(mode_probs.sum(1), as_tuple=True)[0]]
+        # mode_probs = mode_probs[torch.nonzero(mode_probs.sum(1), as_tuple=True)[0]]
 
         entropy = - (mode_probs * torch.log(mode_probs + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
-        log_ = (mode_probs * torch.log(self.mode_encoding + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
+        # log_ = (mode_probs * torch.log(self.mode_encoding + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
 
-        KL = - entropy - log_
+        # KL = - entropy - log_
 
-        wandb.log({'score': (success_rate - KL)})
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/KL': KL})
-        wandb.log({'Metrics/entropy': entropy})
+        # wandb.log({'score': (success_rate - KL)})
+        # wandb.log({'Metrics/successes': success_rate})
+        # wandb.log({'Metrics/KL': KL})
+        # wandb.log({'Metrics/entropy': entropy})
         # wandb.log({'Metrics/distance': mean_distance.mean().item()})
 
         # print(f'Mean Distance {mean_distance.mean().item()}')
-        print(f'Successrate {success_rate}')
-        print(f'entropy {entropy}')
-        print(f'KL {KL}')
+        # print(f'Successrate {success_rate}')
+        # print(f'entropy {entropy}')
+        # print(f'KL {KL}')
 
-        return success_rate, mode_encoding#, mean_distance
+        return success_rate, entropy, None#, mean_distance

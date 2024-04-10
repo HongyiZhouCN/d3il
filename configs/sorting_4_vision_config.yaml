@@ -11,8 +11,8 @@ num_boxes: 4
 
 # insert wandb here
 wandb:
-  entity: ???
-  project: ???
+  entity: zhouhongyi
+  project: d3il_vision_sorting
 
 group: sorting_${agent_name}
 
@@ -37,7 +37,7 @@ n_embd: 72
 # Training
 train_batch_size: 64
 val_batch_size: 64
-num_workers: 2
+num_workers: 1
 device: 'cuda'
 epoch: 4
 eval_every_n_epochs: 2
@@ -87,9 +87,9 @@ simulation:
   seed: ${seed}
   device: ${device}
   render: False
-  n_cores: 5
-  n_contexts: 60
-  n_trajectories_per_context: 18
+  n_cores: 1
+  n_contexts: 10
+  n_trajectories_per_context: 10
   max_steps_per_episode: 700
   if_vision: True
   num_box: ${num_boxes}
