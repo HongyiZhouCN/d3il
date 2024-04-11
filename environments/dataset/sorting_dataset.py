@@ -307,7 +307,8 @@ class Sorting_Img_Dataset(TrajectoryDataset):
 
                 bp_images.append(image)
 
-            bp_images = torch.concatenate(bp_images, dim=0)
+            # bp_images = torch.concatenate(bp_images, dim=0)
+            bp_images = torch.cat(bp_images, dim=0)
             ################################################################
             inhand_imgs = glob.glob(data_dir + '/images/inhand-cam/' + file_name + '/*')
             inhand_imgs.sort(key=lambda x: int(os.path.basename(x).split('.')[0]))
@@ -319,7 +320,8 @@ class Sorting_Img_Dataset(TrajectoryDataset):
                 image = torch.from_numpy(image).to(self.device).float().unsqueeze(0)
 
                 inhand_images.append(image)
-            inhand_images = torch.concatenate(inhand_images, dim=0)
+            #inhand_images = torch.concatenate(inhand_images, dim=0)
+            inhand_images = torch.cat(inhand_images, dim=0)
             ##################################################################
             # input_state = np.concatenate((robot_des_pos, robot_c_pos), axis=-1)
 
