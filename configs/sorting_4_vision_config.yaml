@@ -35,19 +35,19 @@ n_head: 4
 n_embd: 72
 
 # Training
-train_batch_size: 64
-val_batch_size: 64
+train_batch_size: 512
+val_batch_size: 512
 num_workers: 1
 device: 'cuda'
-epoch: 4
-eval_every_n_epochs: 2
+epoch: 200
+eval_every_n_epochs: 20
 scale_data: True
 
 # Environment
 obs_dim: 2
 action_dim: 2
 max_len_data: 600
-window_size: 1
+window_size: 5
 
 # Dataset
 trainset:
@@ -74,8 +74,8 @@ train_simulation:
   seed: ${seed}
   device: ${device}
   render: False
-  n_cores: 1
-  n_contexts: 1
+  n_cores: 5
+  n_contexts: 30
   n_trajectories_per_context: 1
   max_steps_per_episode: 700
   if_vision: True
