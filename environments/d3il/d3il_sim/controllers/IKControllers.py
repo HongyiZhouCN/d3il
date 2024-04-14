@@ -224,7 +224,8 @@ class CartPosQuatImpedenceController(
             Jw = J.dot(self.W)
 
             # J *  W * J' + reg * I
-            condNumber = np.linalg.cond(Jw.dot(J.T))
+            # condNumber = np.linalg.cond(Jw.dot(J.T))
+            condNumber = None
             JwJ_reg = Jw.dot(J.T) + self.J_reg * np.eye(J.shape[0])
 
             u, s, v = np.linalg.svd(JwJ_reg, full_matrices=False)
@@ -232,7 +233,8 @@ class CartPosQuatImpedenceController(
             s = np.clip(s, self.min_svd_values, self.max_svd_values)
             # reconstruct the Jacobian
             JwJ_reg = u @ np.diag(s) @ v
-            condNumber2 = np.linalg.cond(JwJ_reg)
+            # condNumber2 = np.linalg.cond(JwJ_reg)
+            condNumber2 = None
             largestSV = np.max(s_orig)
 
             qdev_rest = np.clip(self.rest_posture - q, -0.2, 0.2)
