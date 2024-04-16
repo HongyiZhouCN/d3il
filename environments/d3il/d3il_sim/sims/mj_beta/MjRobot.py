@@ -128,6 +128,7 @@ class MjRobot(RobotBase, MjIncludeTemplate):
         self.preprocessCommand(self.command)
         self.scene.data.ctrl[self.joint_act_indices] = self.uff.copy()[: self.num_DoF]
         self.scene.data.ctrl[self.gripper_act_indices] = self.finger_commands
+        #FIXME: check if this is correct
         self.receiveState()
 
     def receiveState(self):

@@ -57,7 +57,7 @@ class Sorting_Sim(BaseSim):
 
         self.mode_encoding = torch.tensor(mode_encoding)
 
-    def eval_agent(self, agent, contexts, n_trajectories, mode_encoding, successes, mean_distance, pid, cpu_set):
+    def eval_agent(self, agent, contexts, n_trajectories, mode_encoding, successes, num_complete, pid, cpu_set):
 
         # print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
@@ -134,6 +134,7 @@ class Sorting_Sim(BaseSim):
 
                 mode_encoding[context, i] = torch.tensor(info['mode'])
                 successes[context, i] = torch.tensor(info['success'])
+                num_complete[context, i] = torch.tensor(len(info['min_inds']))
                 # mean_distance[context, i] = torch.tensor(info['mean_distance'])
 
     ################################
@@ -149,6 +150,7 @@ class Sorting_Sim(BaseSim):
         mode_encoding = torch.zeros([self.n_contexts, self.n_trajectories_per_context]).share_memory_()
         successes = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
         mean_distance = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
+        num_complete = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
 
         contexts = np.arange(self.n_contexts)
 
@@ -178,7 +180,7 @@ class Sorting_Sim(BaseSim):
                         "n_trajectories": self.n_trajectories_per_context,
                         "mode_encoding": mode_encoding,
                         "successes": successes,
-                        "mean_distance": mean_distance,
+                        "num_complete": num_complete,
                         "pid": i,
                         "cpu_set": set([int(cpu_cores[i])]) #set(cpu_set[i:i+1])
                     },
@@ -189,7 +191,7 @@ class Sorting_Sim(BaseSim):
             [p.join() for p in p_list]
 
         else:
-            self.eval_agent(agent, contexts, self.n_trajectories_per_context, mode_encoding, successes, mean_distance, 0, cpu_set=set([0]))
+            self.eval_agent(agent, contexts, self.n_trajectories_per_context, mode_encoding, successes, num_complete, 0, cpu_set=set([0]))
 
         success_rate = torch.mean(successes).item()
         mode_probs = torch.zeros([self.n_contexts, self.n_mode])
@@ -215,10 +217,13 @@ class Sorting_Sim(BaseSim):
         # wandb.log({'Metrics/KL': KL})
         # wandb.log({'Metrics/entropy': entropy})
         # wandb.log({'Metrics/distance': mean_distance.mean().item()})
+        # mean_distance = mean_distance.mean().item()
+        num_complete = num_complete.mean().item()
 
         # print(f'Mean Distance {mean_distance.mean().item()}')
-        # print(f'Successrate {success_rate}')
-        # print(f'entropy {entropy}')
+        print(f'Successrate {success_rate}')
+        print(f'entropy {entropy}')
+        print(f'num_complete {num_complete}')
         # print(f'KL {KL}')
 
-        return success_rate, entropy, None#, mean_distance
+        return success_rate, entropy, num_complete
