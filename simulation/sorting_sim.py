@@ -196,16 +196,16 @@ class Sorting_Sim(BaseSim):
         success_rate = torch.mean(successes).item()
         mode_probs = torch.zeros([self.n_contexts, self.n_mode])
 
-        # for c in range(self.n_contexts):
-        #
-        #     for num in range(self.n_mode):
-        #         mode_probs[c, num] = torch.tensor(
-        #             [sum(mode_encoding[c, successes[c, :] == 1] == self.mode_keys[num]) / self.n_trajectories_per_context])
-        #
-        # mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
-        # print(f'p(m|c) {mode_probs}')
+        for c in range(self.n_contexts):
 
-        # mode_probs = mode_probs[torch.nonzero(mode_probs.sum(1), as_tuple=True)[0]]
+            for num in range(self.n_mode):
+                mode_probs[c, num] = torch.tensor(
+                    [sum(mode_encoding[c, successes[c, :] == 1] == self.mode_keys[num]) / self.n_trajectories_per_context])
+
+        mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
+        print(f'p(m|c) {mode_probs}')
+
+        mode_probs = mode_probs[torch.nonzero(mode_probs.sum(1), as_tuple=True)[0]]
 
         entropy = - (mode_probs * torch.log(mode_probs + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
         # log_ = (mode_probs * torch.log(self.mode_encoding + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
