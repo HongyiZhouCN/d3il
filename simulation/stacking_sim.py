@@ -172,7 +172,7 @@ class Stacking_Sim(BaseSim):
     # n_trajectories_per_context: test each context for n times, this is mostly used for multi-modal data
     # n_cores: the number of cores used for simulation
     ###############################
-    def test_agent(self, agent):
+    def test_agent(self, agent, cpu_cores=None):
 
         log.info('Starting trained model evaluation')
 
@@ -189,10 +189,13 @@ class Stacking_Sim(BaseSim):
 
         workload = self.n_contexts // self.n_cores
 
-        num_cpu = mp.cpu_count()
-        cpu_set = list(range(num_cpu))
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
+        cpu_cores = list(cpu_cores) if cpu_cores is not None else list(range(10))
 
-        print("there are cpus: ", num_cpu)
+        # num_cpu = mp.cpu_count()
+        # cpu_set = list(range(num_cpu))
+
+        # print("there are cpus: ", num_cpu)
 
         ctx = mp.get_context('spawn')
 
@@ -212,7 +215,7 @@ class Stacking_Sim(BaseSim):
                         "successes_1": successes_1,
                         "successes_2": successes_2,
                         "pid": i,
-                        "cpu_set": set(cpu_set[i:i + 1])
+                        "cpu_set": set([int(cpu_cores[i])])
                     },
                 )
                 print("Start {}".format(i))
