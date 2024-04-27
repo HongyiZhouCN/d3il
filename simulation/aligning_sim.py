@@ -125,9 +125,9 @@ class Aligning_Sim(BaseSim):
     # n_trajectories_per_context: test each context for n times, this is mostly used for multi-modal data
     # n_cores: the number of cores used for simulation
     ###############################
-    def test_agent(self, agent):
+    def test_agent(self, agent, cpu_cores=None):
 
-        log.info('Starting trained model evaluation')
+        # log.info('Starting trained model evaluation')
 
         mode_encoding = torch.zeros([self.n_contexts, self.n_trajectories_per_context]).share_memory_()
         successes = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
@@ -135,16 +135,19 @@ class Aligning_Sim(BaseSim):
 
         contexts = np.arange(self.n_contexts)
 
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
+        cpu_cores = list(cpu_cores) if cpu_cores is not None else list(range(10))
+
         workload = self.n_contexts // self.n_cores
 
-        num_cpu = mp.cpu_count()
-        cpu_set = list(range(num_cpu))
+        # num_cpu = mp.cpu_count()
+        # cpu_set = list(range(num_cpu))
 
         # start = self.seed * 20
         # end = start + 20
         #
         # cpu_set = cpu_set[start:end]
-        print("there are cpus: ", num_cpu)
+        # print("there are cpus: ", num_cpu)
 
         ctx = mp.get_context('spawn')
 
@@ -161,7 +164,7 @@ class Aligning_Sim(BaseSim):
                         "successes": successes,
                         "mean_distance": mean_distance,
                         "pid": i,
-                        "cpu_set": set(cpu_set[i:i + 1]),
+                        "cpu_set": set([int(cpu_cores[i])])
                     },
                 )
                 print("Start {}".format(i))
@@ -188,18 +191,18 @@ class Aligning_Sim(BaseSim):
                      sum(mode_encoding[c, successes[c, :] == 1] == 1) / self.n_trajectories_per_context])
 
         mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
-        print(f'p(m|c) {mode_probs}')
+        # print(f'p(m|c) {mode_probs}')
 
         entropy = - (mode_probs * torch.log(mode_probs + 1e-12) / torch.log(
             torch.tensor(n_modes))).sum(1).mean()
 
-        wandb.log({'score': 0.5 * (success_rate + entropy)})
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/entropy': entropy})
-        wandb.log({'Metrics/distance': mean_distance.mean().item()})
+        # wandb.log({'score': 0.5 * (success_rate + entropy)})
+        # wandb.log({'Metrics/successes': success_rate})
+        # wandb.log({'Metrics/entropy': entropy})
+        # wandb.log({'Metrics/distance': mean_distance.mean().item()})
 
-        print(f'Mean Distance {mean_distance.mean().item()}')
-        print(f'Successrate {success_rate}')
-        print(f'entropy {entropy}')
+        # print(f'Mean Distance {mean_distance.mean().item()}')
+        # print(f'Successrate {success_rate}')
+        # print(f'entropy {entropy}')
 
-        return success_rate, mode_encoding#, mean_distance
+        return success_rate, entropy.item(), mean_distance.mean().item()
