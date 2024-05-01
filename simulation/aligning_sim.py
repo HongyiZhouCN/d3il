@@ -136,9 +136,10 @@ class Aligning_Sim(BaseSim):
         contexts = np.arange(self.n_contexts)
 
         self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
-        cpu_cores = list(cpu_cores) if cpu_cores is not None else list(range(10))
+        core_limits = min(self.n_cores, self.n_contexts)
+        cpu_cores = list(cpu_cores)[:core_limits] if cpu_cores is not None else list(range(10))[:core_limits]
 
-        workload = self.n_contexts // self.n_cores
+        workload = self.n_contexts // core_limits
 
         # num_cpu = mp.cpu_count()
         # cpu_set = list(range(num_cpu))
@@ -153,7 +154,7 @@ class Aligning_Sim(BaseSim):
 
         p_list = []
         if self.n_cores > 1:
-            for i in range(self.n_cores):
+            for i in range(core_limits):
                 p = ctx.Process(
                     target=self.eval_agent,
                     kwargs={
