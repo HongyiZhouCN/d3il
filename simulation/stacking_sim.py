@@ -144,6 +144,9 @@ class Stacking_Sim(BaseSim):
 
         mode_probs = torch.zeros([self.n_contexts, n_mode])
 
+        if successes.sum() == 0:
+            return 0, 0
+
         for c in range(self.n_contexts):
 
             for num in range(n_mode):
@@ -152,7 +155,6 @@ class Stacking_Sim(BaseSim):
                                                    / self.n_trajectories_per_context])
 
         mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
-        print(f'p(m|c) {mode_probs}')
 
         mode_probs = mode_probs[torch.nonzero(mode_probs.sum(1), as_tuple=True)[0]]
 
@@ -187,11 +189,12 @@ class Stacking_Sim(BaseSim):
 
         contexts = np.arange(self.n_contexts)
 
-        workload = self.n_contexts // self.n_cores
 
         self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
-        cpu_cores = list(cpu_cores) if cpu_cores is not None else list(range(10))
+        core_limits = min(self.n_cores, self.n_contexts)
+        cpu_cores = list(cpu_cores)[:core_limits] if cpu_cores is not None else list(range(10))[:core_limits]
 
+        workload = self.n_contexts // core_limits
         # num_cpu = mp.cpu_count()
         # cpu_set = list(range(num_cpu))
 
@@ -201,7 +204,7 @@ class Stacking_Sim(BaseSim):
 
         p_list = []
         if self.n_cores > 1:
-            for i in range(self.n_cores):
+            for i in range(core_limits):
                 p = ctx.Process(
                     target=self.eval_agent,
                     kwargs={
@@ -236,25 +239,26 @@ class Stacking_Sim(BaseSim):
         entropy_2, KL_2 = self.cal_KL(mode_encoding_2_box, successes_2, self.mode_encoding_2, n_mode=6)
         entropy_3, KL_3 = self.cal_KL(mode_encoding, successes, self.mode_encoding_3, n_mode=6)
 
-        wandb.log({'score': (box1_success_rate + box2_success_rate + success_rate)})
-
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/entropy_3': entropy_3})
-        wandb.log({'Metrics/KL_3': KL_3})
-
-        wandb.log({'Metrics/successes_1_box': box1_success_rate})
-        wandb.log({'Metrics/entropy_1': entropy_1})
-        wandb.log({'Metrics/KL_1': KL_1})
-
-        wandb.log({'Metrics/successes_2_boxes': box2_success_rate})
-        wandb.log({'Metrics/entropy_2': entropy_2})
-        wandb.log({'Metrics/KL_2': KL_2})
+        # wandb.log({'score': (box1_success_rate + box2_success_rate + success_rate)})
+        #
+        # wandb.log({'Metrics/successes': success_rate})
+        # wandb.log({'Metrics/entropy_3': entropy_3})
+        # wandb.log({'Metrics/KL_3': KL_3})
+        #
+        # wandb.log({'Metrics/successes_1_box': box1_success_rate})
+        # wandb.log({'Metrics/entropy_1': entropy_1})
+        # wandb.log({'Metrics/KL_1': KL_1})
+        #
+        # wandb.log({'Metrics/successes_2_boxes': box2_success_rate})
+        # wandb.log({'Metrics/entropy_2': entropy_2})
+        # wandb.log({'Metrics/KL_2': KL_2})
 
         # print(f'Mean Distance {mean_distance.mean().item()}')
-        print(f'Successrate {success_rate}')
-        print(f'Successrate_1 {box1_success_rate}')
-        print(f'Successrate_2 {box2_success_rate}')
+        # print(f'Successrate {success_rate}')
+        # print(f'Successrate_1 {box1_success_rate}')
+        # print(f'Successrate_2 {box2_success_rate}')
         # print(f'entropy {entropy_1}')
         # print(f'KL {KL_1}')
 
-        return successes, mode_encoding#, mean_distance
+        return {'box_1_success_rate':box1_success_rate, 'box_2_success_rate':box2_success_rate, 'box_3_success_rate':success_rate,
+                'entropy_1':entropy_1, 'KL_1':KL_1, 'entropy_2':entropy_2, 'KL_2':KL_2, 'entropy_3':entropy_3, 'KL_3':KL_3}
