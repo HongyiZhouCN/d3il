@@ -203,11 +203,14 @@ class Sorting_Sim(BaseSim):
                     [sum(mode_encoding[c, successes[c, :] == 1] == self.mode_keys[num]) / self.n_trajectories_per_context])
 
         mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
-        print(f'p(m|c) {mode_probs}')
+        # print(f'p(m|c) {mode_probs}')
 
         mode_probs = mode_probs[torch.nonzero(mode_probs.sum(1), as_tuple=True)[0]]
 
-        entropy = - (mode_probs * torch.log(mode_probs + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
+        if success_rate == 0:
+            entropy = 0
+        else:
+            entropy = - (mode_probs * torch.log(mode_probs + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
         # log_ = (mode_probs * torch.log(self.mode_encoding + 1e-12) / torch.log(torch.tensor(self.n_mode))).sum(1).mean()
 
         # KL = - entropy - log_
@@ -221,9 +224,9 @@ class Sorting_Sim(BaseSim):
         num_complete = num_complete.mean().item()
 
         # print(f'Mean Distance {mean_distance.mean().item()}')
-        print(f'Successrate {success_rate}')
-        print(f'entropy {entropy}')
-        print(f'num_complete {num_complete}')
+        # print(f'Successrate {success_rate}')
+        # print(f'entropy {entropy}')
+        # print(f'num_complete {num_complete}')
         # print(f'KL {KL}')
 
         return success_rate, entropy, num_complete
