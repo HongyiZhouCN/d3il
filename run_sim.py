@@ -38,8 +38,8 @@ def main(cfg: DictConfig) -> None:
     agent = hydra.utils.instantiate(cfg.agents)
     
     # TODO: insert agent.load_pretrained_model() here with relative path
-    path = "/home/hongyi/Codes/demo_acc_rl/d3il/logs/avoiding/sweeps/beso/2024-03-11/16-06-09/agent_name=beso,agents.num_sampling_steps=4,agents.sigma_max=1,agents.sigma_min=0.1,agents=beso_agent,seed=0,window_size=1"
-    sv_name = "eval_best_beso.pth"
+    path = "/home/hongyi/Codes/demo_acc_rl/d3il/logs/models/avoiding/ddpm_act/20-28-20/agent_name=ddpm_encdec,agents.model.n_timesteps=16,agents=ddpm_encdec,group=obstacle_avoidance_ddpm_encdec_seeds,seed=0,simulation.n_cores=30,simulation.n_trajectories=480,window_size=8"
+    sv_name = "eval_best_ddpm.pth"
     agent.load_pretrained_model(path, sv_name=sv_name)
 
     env_sim = hydra.utils.instantiate(cfg.simulation)

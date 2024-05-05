@@ -40,9 +40,10 @@ class Pushing_Sim(BaseSim):
         self.n_contexts = n_contexts
         self.n_trajectories_per_context = n_trajectories_per_context
 
-    def eval_agent(self, agent, contexts, n_trajectories, mode_encoding, successes, mean_distance, pid, cpu_set):
+    def eval_agent(self, agent, contexts, context_ind, mode_encoding, successes, mean_distance, pid, cpu_set,
+                   context_id_dict={}):
 
-        print(os.getpid(), cpu_set)
+        # print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
 
         env = Block_Push_Env(render=self.render)
@@ -52,37 +53,34 @@ class Pushing_Sim(BaseSim):
         torch.manual_seed(pid)
         np.random.seed(pid)
 
-        for context in contexts:
-            for i in range(n_trajectories):
+        print(f'core {cpu_set} proceeds Context {contexts} with Rollout context_ind {context_ind}')
 
-                agent.reset()
+        for i, context in contexts:
 
-                print(f'Context {context} Rollout {i}')
-                # training contexts
-                # env.manager.set_index(context)
-                obs = env.reset(random=False, context=test_contexts[context])
-                # test contexts
-                # test_context = env.manager.sample()
-                # obs = env.reset(random=False, context=test_context)
+            agent.reset()
 
-                pred_action = env.robot_state()
-                fixed_z = pred_action[2:]
-                done = False
+            print(f'Context {context} Rollout {i}')
+            obs = env.reset(random=False, context=test_contexts[context])
 
-                while not done:
+            pred_action = env.robot_state()
+            fixed_z = pred_action[2:]
+            done = False
 
-                    obs = np.concatenate((pred_action[:2], obs))
+            while not done:
 
-                    pred_action = agent.predict(obs)
-                    pred_action = pred_action[0] + obs[:2]
+                obs = np.concatenate((pred_action[:2], obs))
 
-                    pred_action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
+                pred_action = agent.predict(obs)
+                pred_action = pred_action[0] + obs[:2]
 
-                    obs, reward, done, info = env.step(pred_action)
+                pred_action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
 
-                mode_encoding[context, i] = torch.tensor(info['mode'])
-                successes[context, i] = torch.tensor(info['success'])
-                mean_distance[context, i] = torch.tensor(info['mean_distance'])
+                obs, reward, done, info = env.step(pred_action)
+
+            ctxt_idx = context_id_dict[context]
+            mode_encoding[ctxt_idx, i] = torch.tensor(info['mode'])
+            successes[ctxt_idx, i] = torch.tensor(info['success'])
+            mean_distance[ctxt_idx, i] = torch.tensor(info['mean_distance'])
 
     ################################
     # we use multi-process for the simulation
@@ -90,26 +88,37 @@ class Pushing_Sim(BaseSim):
     # n_trajectories_per_context: test each context for n times, this is mostly used for multi-modal data
     # n_cores: the number of cores used for simulation
     ###############################
-    def test_agent(self, agent):
-
-        log.info('Starting trained model evaluation')
+    def test_agent(self, agent, cpu_cores=None):
 
         mode_encoding = torch.zeros([self.n_contexts, self.n_trajectories_per_context]).share_memory_()
         successes = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
         mean_distance = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
 
-        contexts = np.arange(self.n_contexts)
+        #####################################################################
+        ## get assignment to cores
+        ####################################################################
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
 
-        workload = self.n_contexts // self.n_cores
+        contexts = np.random.randint(0, 60, self.n_contexts) if self.n_contexts != 60 else np.arange(60)
+        context_idx_dict = {c: i for i, c in enumerate(contexts)}
 
-        num_cpu = mp.cpu_count()
-        cpu_set = list(range(num_cpu))
+        contexts = np.repeat(contexts, self.n_trajectories_per_context)
 
-        # start = self.seed * 20
-        # end = start + 20
-        #
-        # cpu_set = cpu_set[start:end]
-        print("there are cpus: ", num_cpu)
+        context_ind = np.arange(self.n_trajectories_per_context)
+        context_ind = np.tile(context_ind, self.n_contexts)
+
+        repeat_nums = (self.n_contexts * self.n_trajectories_per_context) // self.n_cores
+        repeat_res = (self.n_contexts * self.n_trajectories_per_context) % self.n_cores
+
+        workload_array = np.ones([self.n_cores], dtype=int)
+        workload_array[:repeat_res] += repeat_nums
+        workload_array[repeat_res:] = repeat_nums
+
+        assert np.sum(workload_array) == len(contexts)
+
+        ind_workload = np.cumsum(workload_array)
+        ind_workload = np.concatenate(([0], ind_workload))
+        ########################################################################
 
         ctx = mp.get_context('spawn')
 
@@ -120,13 +129,14 @@ class Pushing_Sim(BaseSim):
                     target=self.eval_agent,
                     kwargs={
                         "agent": agent,
-                        "contexts": contexts[i * workload:(i + 1) * workload],
-                        "n_trajectories": self.n_trajectories_per_context,
+                        "contexts": contexts[ind_workload[i]:ind_workload[i + 1]],
+                        "context_ind": context_ind[ind_workload[i]:ind_workload[i + 1]],
                         "mode_encoding": mode_encoding,
                         "successes": successes,
                         "mean_distance": mean_distance,
                         "pid": i,
-                        "cpu_set": set(cpu_set[i:i + 1])
+                        "cpu_set": set([int(cpu_cores[i])]),
+                        "context_id_dict": context_idx_dict
                     },
                 )
                 print("Start {}".format(i))

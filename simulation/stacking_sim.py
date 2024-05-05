@@ -61,8 +61,8 @@ class Stacking_Sim(BaseSim):
         self.mode_encoding_2 = torch.tensor(self.mode_encoding_2)
         self.mode_encoding_3 = torch.tensor(self.mode_encoding_3)
 
-    def eval_agent(self, agent, contexts, n_trajectories, mode_encoding, mode_encoding_1_box, mode_encoding_2_box,
-                   successes, successes_1, successes_2, cpu_set, pid):
+    def eval_agent(self, agent, contexts, context_ind, mode_encoding, mode_encoding_1_box, mode_encoding_2_box,
+                   successes, successes_1, successes_2, cpu_set, pid, context_id_dict={}):
 
         print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
@@ -73,72 +73,52 @@ class Stacking_Sim(BaseSim):
         random.seed(pid)
         torch.manual_seed(pid)
         np.random.seed(pid)
+        print(f'core {cpu_set} proceeds Context {contexts} with Rollout context_ind {context_ind}')
 
-        for context in contexts:
+        for i, context in enumerate(contexts):
 
             sim_step = 0
-            for i in range(n_trajectories):
 
-                agent.reset()
+            agent.reset()
 
-                print(f'Context {context} Rollout {i}')
-                # training contexts
-                # env.manager.set_index(context)
-                # obs = env.reset()
-                # test contexts
-                # test_context = env.manager.sample()
-                obs = env.reset(random=False, context=self.test_contexts[context])
+            obs = env.reset(random=False, context=self.test_contexts[context])
 
-                pred_action, _, _ = env.robot_state()
-                pred_action = pred_action.astype(np.float32)
+            pred_action, _, _ = env.robot_state()
+            pred_action = pred_action.astype(np.float32)
 
-                done = False
-                while not done:
-                    # obs = np.concatenate((pred_action[:-1], obs))
-                    # obs = np.concatenate((pred_action[:-1], obs, np.array([sim_step])))
+            done = False
+            while not done:
 
-                    obs = np.concatenate((pred_action, obs))
+                obs = np.concatenate((pred_action, obs))
 
-                    # print(obs[11], obs[15], obs[-1])
+                pred_action = agent.predict(obs)[0]
+                pred_action[:7] = pred_action[:7] + obs[:7]
 
-                    pred_action = agent.predict(obs)[0]
-                    pred_action[:7] = pred_action[:7] + obs[:7]
+                obs, reward, done, info = env.step(pred_action)
+                sim_step += 1
 
-                    # pred_action = np.concatenate((pred_action, [0, 1, 0, 0, 1]))
-                    # j_pos = pred_action[:7]
-                    # j_vel = pred_action[7:14]
-                    # gripper_width = pred_action[14]
+            ctxt_id = context_id_dict[context]
 
-                    # print(gripper_width)
+            if len(info['mode']) > 2:
+                mode_encoding_1_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_1[info['mode'][:1]])
+                mode_encoding_2_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_2[info['mode'][:2]])
 
-                    obs, reward, done, info = env.step(pred_action)
-                    sim_step += 1
+                mode_encoding[ctxt_id, context_ind[i]] = torch.tensor(self.mode_3[info['mode'][:3]])
 
-                # if info['mode'] not in self.mode_keys:
-                #     pass
-                # else:
-                #     mode_encoding[context, i] = torch.tensor(self.mode_dict[info['mode']])
+            elif len(info['mode']) > 1:
+                mode_encoding_1_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_1[info['mode'][:1]])
+                mode_encoding_2_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_2[info['mode'][:2]])
 
-                if len(info['mode']) > 2:
-                    mode_encoding_1_box[context, i] = torch.tensor(self.mode_1[info['mode'][:1]])
-                    mode_encoding_2_box[context, i] = torch.tensor(self.mode_2[info['mode'][:2]])
+            elif len(info['mode']) > 0:
+                mode_encoding_1_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_1[info['mode'][:1]])
 
-                    mode_encoding[context, i] = torch.tensor(self.mode_3[info['mode'][:3]])
+            else:
+                pass
 
-                elif len(info['mode']) > 1:
-                    mode_encoding_1_box[context, i] = torch.tensor(self.mode_1[info['mode'][:1]])
-                    mode_encoding_2_box[context, i] = torch.tensor(self.mode_2[info['mode'][:2]])
-
-                elif len(info['mode']) > 0:
-                    mode_encoding_1_box[context, i] = torch.tensor(self.mode_1[info['mode'][:1]])
-
-                else:
-                    pass
-
-                successes[context, i] = torch.tensor(info['success'])
-                successes_1[context, i] = torch.tensor(info['success_1'])
-                successes_2[context, i] = torch.tensor(info['success_2'])
-                # mean_distance[context, i] = torch.tensor(info['mean_distance'])
+            successes[ctxt_id, context_ind[i]] = torch.tensor(info['success'])
+            successes_1[ctxt_id, context_ind[i]] = torch.tensor(info['success_1'])
+            successes_2[ctxt_id, context_ind[i]] = torch.tensor(info['success_2'])
+            # mean_distance[context, i] = torch.tensor(info['mean_distance'])
 
     def cal_KL(self, mode_encoding, successes, prior_encoding, n_mode=6):
 
@@ -191,26 +171,39 @@ class Stacking_Sim(BaseSim):
 
 
         self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
-        core_limits = min(self.n_cores, self.n_contexts)
-        cpu_cores = list(cpu_cores)[:core_limits] if cpu_cores is not None else list(range(10))[:core_limits]
 
-        workload = self.n_contexts // core_limits
-        # num_cpu = mp.cpu_count()
-        # cpu_set = list(range(num_cpu))
+        contexts = np.random.randint(0, 60, self.n_contexts)
+        context_idx_dict = {c: i for i, c in enumerate(contexts)}
 
-        # print("there are cpus: ", num_cpu)
+        contexts = np.repeat(contexts, self.n_trajectories_per_context)
+
+        context_ind = np.arange(self.n_trajectories_per_context)
+        context_ind = np.tile(context_ind, self.n_contexts)
+
+        repeat_nums = (self.n_contexts * self.n_trajectories_per_context) // self.n_cores
+        repeat_res = (self.n_contexts * self.n_trajectories_per_context) % self.n_cores
+
+        workload_array = np.ones([self.n_cores], dtype=int)
+        workload_array[:repeat_res] += repeat_nums
+        workload_array[repeat_res:] = repeat_nums
+
+        assert np.sum(workload_array) == len(contexts)
+
+        ind_workload = np.cumsum(workload_array)
+        ind_workload = np.concatenate(([0], ind_workload))
+
 
         ctx = mp.get_context('spawn')
 
         p_list = []
         if self.n_cores > 1:
-            for i in range(core_limits):
+            for i in range(self.n_cores):
                 p = ctx.Process(
                     target=self.eval_agent,
                     kwargs={
                         "agent": agent,
-                        "contexts": contexts[i * workload:(i + 1) * workload],
-                        "n_trajectories": self.n_trajectories_per_context,
+                        "contexts": contexts[ind_workload[i]:ind_workload[i + 1]],
+                        "context_ind": context_ind[ind_workload[i]:ind_workload[i + 1]],
                         "mode_encoding": mode_encoding,
                         "mode_encoding_1_box": mode_encoding_1_box,
                         "mode_encoding_2_box": mode_encoding_2_box,
@@ -218,10 +211,11 @@ class Stacking_Sim(BaseSim):
                         "successes_1": successes_1,
                         "successes_2": successes_2,
                         "pid": i,
-                        "cpu_set": set([int(cpu_cores[i])])
+                        "cpu_set": set([int(cpu_cores[i])]),
+                        "context_id_dict": context_idx_dict
                     },
                 )
-                print("Start {}".format(i))
+                # print("Start {}".format(i))
                 p.start()
                 p_list.append(p)
             [p.join() for p in p_list]

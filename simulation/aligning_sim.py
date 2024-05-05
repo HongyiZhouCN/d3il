@@ -143,7 +143,7 @@ class Aligning_Sim(BaseSim):
         ####################################################################
         self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
 
-        contexts = np.random.randint(0, 60, self.n_contexts)
+        contexts = np.random.randint(0, 60, self.n_contexts) if self.n_contexts != 60 else np.arange(60)
         context_idx_dict = {c: i for i, c in enumerate(contexts)}
 
         contexts = np.repeat(contexts, self.n_trajectories_per_context)
@@ -163,21 +163,6 @@ class Aligning_Sim(BaseSim):
         ind_workload = np.cumsum(workload_array)
         ind_workload = np.concatenate(([0], ind_workload))
         ########################################################################
-
-        ##FIXME: check if comment out the following code is correct
-        # core_limits = min(self.n_cores, self.n_contexts)
-        # cpu_cores = list(cpu_cores)[:core_limits] if cpu_cores is not None else list(range(10))[:core_limits]
-
-        # workload = self.n_contexts // core_limits
-
-        # num_cpu = mp.cpu_count()
-        # cpu_set = list(range(num_cpu))
-
-        # start = self.seed * 20
-        # end = start + 20
-        #
-        # cpu_set = cpu_set[start:end]
-        # print("there are cpus: ", num_cpu)
 
         ctx = mp.get_context('spawn')
 
