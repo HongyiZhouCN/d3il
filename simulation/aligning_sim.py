@@ -43,9 +43,10 @@ class Aligning_Sim(BaseSim):
         self.n_contexts = n_contexts
         self.n_trajectories_per_context = n_trajectories_per_context
 
-    def eval_agent(self, agent, contexts, context_ind, n_trajectories, mode_encoding, successes, mean_distance, pid, cpu_set):
+    def eval_agent(self, agent, contexts, context_ind, n_trajectories, mode_encoding, successes, mean_distance, pid, cpu_set,
+                   context_id_dict={}):
 
-        print(os.getpid(), cpu_set)
+        # print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
 
         env = Robot_Push_Env(render=self.render, if_vision=self.if_vision)
@@ -55,7 +56,7 @@ class Aligning_Sim(BaseSim):
         torch.manual_seed(pid)
         np.random.seed(pid)
 
-        print(f'this core proceeds Context {contexts} with Rollout context_ind {context_ind}')
+        print(f'core {cpu_set} proceeds Context {contexts} with Rollout context_ind {context_ind}')
 
         for i, context in enumerate(contexts):
             # for i in range(n_trajectories):
@@ -117,9 +118,11 @@ class Aligning_Sim(BaseSim):
 
                     obs, reward, done, info = env.step(pred_action)
 
-            mode_encoding[context, context_ind[i]] = torch.tensor(info['mode'])
-            successes[context, context_ind[i]] = torch.tensor(info['success'])
-            mean_distance[context, context_ind[i]] = torch.tensor(info['mean_distance'])
+            ### add mapping to the context
+            ctxt_idx = context_id_dict[context]
+            mode_encoding[ctxt_idx, context_ind[i]] = torch.tensor(info['mode'])
+            successes[ctxt_idx, context_ind[i]] = torch.tensor(info['success'])
+            mean_distance[ctxt_idx, context_ind[i]] = torch.tensor(info['mean_distance'])
 
     ################################
     # we use multi-process for the simulation
@@ -138,7 +141,11 @@ class Aligning_Sim(BaseSim):
         #####################################################################
         ## get assignment to cores
         ####################################################################
-        contexts = np.arange(self.n_contexts)
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
+
+        contexts = np.random.randint(0, 60, self.n_contexts)
+        context_idx_dict = {c: i for i, c in enumerate(contexts)}
+
         contexts = np.repeat(contexts, self.n_trajectories_per_context)
 
         context_ind = np.arange(self.n_trajectories_per_context)
@@ -157,9 +164,9 @@ class Aligning_Sim(BaseSim):
         ind_workload = np.concatenate(([0], ind_workload))
         ########################################################################
 
-        self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
-        core_limits = min(self.n_cores, self.n_contexts)
-        cpu_cores = list(cpu_cores)[:core_limits] if cpu_cores is not None else list(range(10))[:core_limits]
+        ##FIXME: check if comment out the following code is correct
+        # core_limits = min(self.n_cores, self.n_contexts)
+        # cpu_cores = list(cpu_cores)[:core_limits] if cpu_cores is not None else list(range(10))[:core_limits]
 
         # workload = self.n_contexts // core_limits
 
@@ -176,7 +183,7 @@ class Aligning_Sim(BaseSim):
 
         p_list = []
         if self.n_cores > 1:
-            for i in range(core_limits):
+            for i in range(self.n_cores):
                 p = ctx.Process(
                     target=self.eval_agent,
                     kwargs={
@@ -188,10 +195,11 @@ class Aligning_Sim(BaseSim):
                         "successes": successes,
                         "mean_distance": mean_distance,
                         "pid": i,
-                        "cpu_set": set([int(cpu_cores[i])])
+                        "cpu_set": set([int(cpu_cores[i])]),
+                        "context_id_dict": context_idx_dict
                     },
                 )
-                print("Start {}".format(i))
+                # print("Start {}".format(i))
                 p.start()
                 p_list.append(p)
             [p.join() for p in p_list]
