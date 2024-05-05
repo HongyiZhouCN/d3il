@@ -43,7 +43,7 @@ class Aligning_Sim(BaseSim):
         self.n_contexts = n_contexts
         self.n_trajectories_per_context = n_trajectories_per_context
 
-    def eval_agent(self, agent, contexts, context_ind, n_trajectories, mode_encoding, successes, mean_distance, pid, cpu_set,
+    def eval_agent(self, agent, contexts, context_ind, mode_encoding, successes, mean_distance, pid, cpu_set,
                    context_id_dict={}):
 
         # print(os.getpid(), cpu_set)
@@ -175,7 +175,6 @@ class Aligning_Sim(BaseSim):
                         "agent": agent,
                         "contexts": contexts[ind_workload[i]:ind_workload[i+1]],
                         "context_ind": context_ind[ind_workload[i]:ind_workload[i+1]],
-                        "n_trajectories": self.n_trajectories_per_context,
                         "mode_encoding": mode_encoding,
                         "successes": successes,
                         "mean_distance": mean_distance,
@@ -190,7 +189,7 @@ class Aligning_Sim(BaseSim):
             [p.join() for p in p_list]
 
         else:
-            self.eval_agent(agent, contexts, self.n_trajectories_per_context, mode_encoding, successes, mean_distance, 0, cpu_set=set([0]))
+            self.eval_agent(agent, contexts, context_ind, mode_encoding, successes, mean_distance, pid=0, cpu_set=set([0]), context_id_dict=context_idx_dict)
 
         n_modes = 2
 

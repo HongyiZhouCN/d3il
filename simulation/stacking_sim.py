@@ -221,8 +221,8 @@ class Stacking_Sim(BaseSim):
             [p.join() for p in p_list]
 
         else:
-            self.eval_agent(agent, contexts, self.n_trajectories_per_context, mode_encoding, mode_encoding_1_box, mode_encoding_2_box,
-                            successes, successes_1, successes_2, set([0]), 0)
+            self.eval_agent(agent, contexts, context_ind, mode_encoding, mode_encoding_1_box, mode_encoding_2_box,
+                            successes, successes_1, successes_2, pid=0, cpu_set=set([0]), context_id_dict=context_idx_dict)
 
         box1_success_rate = torch.mean(successes_1).item()
         box2_success_rate = torch.mean(successes_2).item()

@@ -201,7 +201,7 @@ class Sorting_Sim(BaseSim):
             [p.join() for p in p_list]
 
         else:
-            self.eval_agent(agent, contexts, self.n_trajectories_per_context, mode_encoding, successes, num_complete, 0, cpu_set=set([0]))
+            self.eval_agent(agent, contexts, context_ind, mode_encoding, successes, num_complete, 0, cpu_set=set([0]), context_id_dict=context_idx_dict)
 
         success_rate = torch.mean(successes).item()
         mode_probs = torch.zeros([self.n_contexts, self.n_mode])

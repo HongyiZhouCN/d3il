@@ -145,7 +145,7 @@ class Pushing_Sim(BaseSim):
             [p.join() for p in p_list]
 
         else:
-            self.eval_agent(agent, contexts, self.n_trajectories_per_context, mode_encoding, successes, mean_distance, 0, set([0]))
+            self.eval_agent(agent, contexts, context_ind, mode_encoding, successes, mean_distance, 0, set([0]), context_idx_dict)
 
         n_modes = 4
 
