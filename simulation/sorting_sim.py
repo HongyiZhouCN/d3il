@@ -71,7 +71,7 @@ class Sorting_Sim(BaseSim):
 
         print(f'core {cpu_set} proceeds Context {contexts} with Rollout context_ind {context_ind}')
 
-        for i, context in contexts:
+        for i, context in enumerate(contexts):
 
             agent.reset()
 
@@ -192,7 +192,7 @@ class Sorting_Sim(BaseSim):
                         "num_complete": num_complete,
                         "pid": i,
                         "cpu_set": set([int(cpu_cores[i])]), #set(cpu_set[i:i+1]),
-                        "context_idx_dict": context_idx_dict,
+                        "context_id_dict": context_idx_dict,
                     },
                 )
                 # print("Start {}".format(i))
