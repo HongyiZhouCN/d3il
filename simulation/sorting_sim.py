@@ -131,9 +131,9 @@ class Sorting_Sim(BaseSim):
                     obs, reward, done, info = env.step(pred_action)
 
             ctxt_idx = context_id_dict[context]
-            mode_encoding[ctxt_idx, i] = torch.tensor(info['mode'])
-            successes[ctxt_idx, i] = torch.tensor(info['success'])
-            num_complete[ctxt_idx, i] = torch.tensor(len(info['min_inds']))
+            mode_encoding[ctxt_idx, context_ind[i]] = torch.tensor(info['mode'])
+            successes[ctxt_idx, context_ind[i]] = torch.tensor(info['success'])
+            num_complete[ctxt_idx, context_ind[i]] = torch.tensor(len(info['min_inds']))
 
     ################################
     # we use multi-process for the simulation
