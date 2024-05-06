@@ -172,7 +172,7 @@ class Stacking_Sim(BaseSim):
 
         self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
 
-        contexts = np.random.randint(0, 60, self.n_contexts)
+        contexts = np.random.randint(0, 60, self.n_contexts) if self.n_contexts != 60 else np.arange(60)
         context_idx_dict = {c: i for i, c in enumerate(contexts)}
 
         contexts = np.repeat(contexts, self.n_trajectories_per_context)
