@@ -118,7 +118,6 @@ class Stacking_Sim(BaseSim):
             successes[ctxt_id, context_ind[i]] = torch.tensor(info['success'])
             successes_1[ctxt_id, context_ind[i]] = torch.tensor(info['success_1'])
             successes_2[ctxt_id, context_ind[i]] = torch.tensor(info['success_2'])
-            # mean_distance[context, i] = torch.tensor(info['mean_distance'])
 
     def cal_KL(self, mode_encoding, successes, prior_encoding, n_mode=6):
 
@@ -166,8 +165,6 @@ class Stacking_Sim(BaseSim):
         successes = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
         successes_1 = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
         successes_2 = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
-
-        contexts = np.arange(self.n_contexts)
 
 
         self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
@@ -232,27 +229,6 @@ class Stacking_Sim(BaseSim):
         entropy_1, KL_1 = self.cal_KL(mode_encoding_1_box, successes_1, self.mode_encoding_1, n_mode=3)
         entropy_2, KL_2 = self.cal_KL(mode_encoding_2_box, successes_2, self.mode_encoding_2, n_mode=6)
         entropy_3, KL_3 = self.cal_KL(mode_encoding, successes, self.mode_encoding_3, n_mode=6)
-
-        # wandb.log({'score': (box1_success_rate + box2_success_rate + success_rate)})
-        #
-        # wandb.log({'Metrics/successes': success_rate})
-        # wandb.log({'Metrics/entropy_3': entropy_3})
-        # wandb.log({'Metrics/KL_3': KL_3})
-        #
-        # wandb.log({'Metrics/successes_1_box': box1_success_rate})
-        # wandb.log({'Metrics/entropy_1': entropy_1})
-        # wandb.log({'Metrics/KL_1': KL_1})
-        #
-        # wandb.log({'Metrics/successes_2_boxes': box2_success_rate})
-        # wandb.log({'Metrics/entropy_2': entropy_2})
-        # wandb.log({'Metrics/KL_2': KL_2})
-
-        # print(f'Mean Distance {mean_distance.mean().item()}')
-        # print(f'Successrate {success_rate}')
-        # print(f'Successrate_1 {box1_success_rate}')
-        # print(f'Successrate_2 {box2_success_rate}')
-        # print(f'entropy {entropy_1}')
-        # print(f'KL {KL_1}')
 
         return {'box_1_success_rate':box1_success_rate, 'box_2_success_rate':box2_success_rate, 'box_3_success_rate':success_rate,
                 'entropy_1':entropy_1, 'KL_1':KL_1, 'entropy_2':entropy_2, 'KL_2':KL_2, 'entropy_3':entropy_3, 'KL_3':KL_3}
