@@ -171,7 +171,7 @@ class Pushing_Sim(BaseSim):
                      sum(mode_encoding[c, successes[c, :] == 1] == 3) / self.n_trajectories_per_context])
 
         mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
-        print(f'p(m|c) {mode_probs}')
+        # print(f'p(m|c) {mode_probs}')
 
         entropy = - (mode_probs * torch.log(mode_probs + 1e-12) / torch.log(
             torch.tensor(n_modes))).sum(1).mean()
@@ -181,8 +181,8 @@ class Pushing_Sim(BaseSim):
         # wandb.log({'Metrics/entropy': entropy})
         # wandb.log({'Metrics/distance': mean_distance.mean().item()})
 
-        print(f'Mean Distance {mean_distance.mean().item()}')
-        print(f'Successrate {success_rate}')
-        print(f'entropy {entropy}')
+        # print(f'Mean Distance {mean_distance.mean().item()}')
+        # print(f'Successrate {success_rate}')
+        # print(f'entropy {entropy}')
 
         return success_rate, entropy.item(), mean_distance.mean().item(), mode_encoding
