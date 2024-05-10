@@ -92,7 +92,7 @@ simulation:
   _target_: simulation.stacking_vision_sim.Stacking_Sim
   seed: ${seed}
   device: ${device}
-  render: False
+  render: True
   n_cores: 5
   n_contexts: 60
   n_trajectories_per_context: 18

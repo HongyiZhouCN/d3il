@@ -15,8 +15,9 @@ import wandb
 from simulation.base_sim import BaseSim
 from agents.utils.sim_path import sim_framework_path
 
-import gym
-import gym_stacking
+# import gym
+# import gym_stacking
+from envs.gym_stacking_env.gym_stacking.envs.stacking import CubeStacking_Env
 
 log = logging.getLogger(__name__)
 
@@ -102,7 +103,9 @@ class Stacking_Sim(BaseSim):
         print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
 
-        env = gym.make('stacking-v0', max_steps_per_episode=self.max_steps_per_episode, render=self.render, if_vision=if_vision)
+        # env = gym.make('stacking-v0', max_steps_per_episode=self.max_steps_per_episode, render=self.render, if_vision=if_vision)
+        env = CubeStacking_Env(max_steps_per_episode=self.max_steps_per_episode, render=self.render)
+
         env.start()
 
         random.seed(pid)
@@ -237,7 +240,7 @@ class Stacking_Sim(BaseSim):
     # n_trajectories_per_context: test each context for n times, this is mostly used for multi-modal data
     # n_cores: the number of cores used for simulation
     ###############################
-    def test_agent(self, agent):
+    def test_agent(self, agent, cpu_cores=None):
 
         log.info('Starting trained model evaluation')
 
