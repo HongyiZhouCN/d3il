@@ -97,116 +97,110 @@ class Stacking_Sim(BaseSim):
         #
         # self.mode_encoding_box1 = torch.tensor(mode_encoding_box1)
 
-    def eval_agent(self, agent, contexts, n_trajectories, mode_encoding, mode_encoding_1_box, mode_encoding_2_box,
-                   successes, successes_1, successes_2, cpu_set, pid, if_vision=False):
+    def eval_agent(self, agent, contexts, context_ind, mode_encoding, mode_encoding_1_box, mode_encoding_2_box,
+                   successes, successes_1, successes_2, cpu_set, pid, if_vision=False, context_id_dict={}):
 
         print(os.getpid(), cpu_set)
         assign_process_to_cpu(os.getpid(), cpu_set)
 
-        # env = gym.make('stacking-v0', max_steps_per_episode=self.max_steps_per_episode, render=self.render, if_vision=if_vision)
-        env = CubeStacking_Env(max_steps_per_episode=self.max_steps_per_episode, render=self.render)
-
+        env = CubeStacking_Env(max_steps_per_episode=self.max_steps_per_episode, render=self.render, if_vision=if_vision)
         env.start()
 
         random.seed(pid)
         torch.manual_seed(pid)
         np.random.seed(pid)
+        print(f'core {cpu_set} proceeds Context {contexts} with Rollout context_ind {context_ind}')
 
-        for context in contexts:
+        for i, context in enumerate(context_ind):
 
             sim_step = 0
-            for i in range(n_trajectories):
+            agent.reset()
 
-                agent.reset()
+            print(f'Context {context} Rollout {context_ind[i]}')
+            obs = env.reset(random=False, context=self.test_contexts[context])
 
-                print(f'Context {context} Rollout {i}')
-                # training contexts
-                # env.manager.set_index(context)
-                # obs = env.reset()
-                # test contexts
-                # test_context = env.manager.sample()
-                obs = env.reset(random=False, context=self.test_contexts[context])
+            if if_vision:
 
-                if if_vision:
+                j_state, bp_image, inhand_image = obs
+                bp_image = bp_image.transpose((2, 0, 1)) / 255.
+                inhand_image = inhand_image.transpose((2, 0, 1)) / 255.
 
-                    j_state, bp_image, inhand_image = obs
+                des_j_state = j_state
+                done = False
+
+                while not done:
+                    pred_action = agent.predict((bp_image, inhand_image, des_j_state), if_vision=if_vision)[0]
+                    pred_action[:7] = pred_action[:7] + des_j_state[:7]
+
+                    obs, reward, done, info = env.step(pred_action)
+
+                    des_j_state = pred_action
+
+                    robot_pos, bp_image, inhand_image = obs
+
+                    # cv2.imshow('0', bp_image)
+                    # cv2.waitKey(1)
+                    #
+                    # cv2.imshow('1', inhand_image)
+                    # cv2.waitKey(1)
+
                     bp_image = bp_image.transpose((2, 0, 1)) / 255.
                     inhand_image = inhand_image.transpose((2, 0, 1)) / 255.
 
-                    des_j_state = j_state
-                    done = False
+            else:
+                pred_action, _, _ = env.robot_state()
+                pred_action = pred_action.astype(np.float32)
 
-                    while not done:
-                        pred_action = agent.predict((bp_image, inhand_image, des_j_state), if_vision=if_vision)[0]
-                        pred_action[:7] = pred_action[:7] + des_j_state[:7]
+                done = False
+                while not done:
+                    # obs = np.concatenate((pred_action[:-1], obs))
+                    # obs = np.concatenate((pred_action[:-1], obs, np.array([sim_step])))
 
-                        obs, reward, done, info = env.step(pred_action)
+                    obs = np.concatenate((pred_action, obs))
 
-                        des_j_state = pred_action
+                    # print(obs[11], obs[15], obs[-1])
 
-                        robot_pos, bp_image, inhand_image = obs
+                    pred_action = agent.predict(obs)[0]
+                    pred_action[:7] = pred_action[:7] + obs[:7]
 
-                        # cv2.imshow('0', bp_image)
-                        # cv2.waitKey(1)
-                        #
-                        # cv2.imshow('1', inhand_image)
-                        # cv2.waitKey(1)
+                    # pred_action = np.concatenate((pred_action, [0, 1, 0, 0, 1]))
+                    # j_pos = pred_action[:7]
+                    # j_vel = pred_action[7:14]
+                    # gripper_width = pred_action[14]
 
-                        bp_image = bp_image.transpose((2, 0, 1)) / 255.
-                        inhand_image = inhand_image.transpose((2, 0, 1)) / 255.
+                    # print(gripper_width)
 
-                else:
-                    pred_action, _, _ = env.robot_state()
-                    pred_action = pred_action.astype(np.float32)
-
-                    done = False
-                    while not done:
-                        # obs = np.concatenate((pred_action[:-1], obs))
-                        # obs = np.concatenate((pred_action[:-1], obs, np.array([sim_step])))
-
-                        obs = np.concatenate((pred_action, obs))
-
-                        # print(obs[11], obs[15], obs[-1])
-
-                        pred_action = agent.predict(obs)[0]
-                        pred_action[:7] = pred_action[:7] + obs[:7]
-
-                        # pred_action = np.concatenate((pred_action, [0, 1, 0, 0, 1]))
-                        # j_pos = pred_action[:7]
-                        # j_vel = pred_action[7:14]
-                        # gripper_width = pred_action[14]
-
-                        # print(gripper_width)
-
-                        obs, reward, done, info = env.step(pred_action)
-                        sim_step += 1
+                    obs, reward, done, info = env.step(pred_action)
+                    sim_step += 1
 
 
-                # if info['mode'] not in self.mode_keys:
-                #     pass
-                # else:
-                #     mode_encoding[context, i] = torch.tensor(self.mode_dict[info['mode']])
+            # if info['mode'] not in self.mode_keys:
+            #     pass
+            # else:
+            #     mode_encoding[context, i] = torch.tensor(self.mode_dict[info['mode']])
 
-                if len(info['mode']) > 2:
-                    mode_encoding_1_box[context, i] = torch.tensor(self.mode_1[info['mode'][:1]])
-                    mode_encoding_2_box[context, i] = torch.tensor(self.mode_2[info['mode'][:2]])
+            ctxt_id = context_id_dict[context]
 
-                    mode_encoding[context, i] = torch.tensor(self.mode_3[info['mode'][:3]])
+            if len(info['mode']) > 2:
+                mode_encoding_1_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_1[info['mode'][:1]])
+                mode_encoding_2_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_2[info['mode'][:2]])
 
-                elif len(info['mode']) > 1:
-                    mode_encoding_1_box[context, i] = torch.tensor(self.mode_1[info['mode'][:1]])
-                    mode_encoding_2_box[context, i] = torch.tensor(self.mode_2[info['mode'][:2]])
+                mode_encoding[ctxt_id, context_ind[i]] = torch.tensor(self.mode_3[info['mode'][:3]])
 
-                elif len(info['mode']) > 0:
-                    mode_encoding_1_box[context, i] = torch.tensor(self.mode_1[info['mode'][:1]])
+            elif len(info['mode']) > 1:
+                mode_encoding_1_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_1[info['mode'][:1]])
+                mode_encoding_2_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_2[info['mode'][:2]])
 
-                else:
-                    pass
+            elif len(info['mode']) > 0:
+                mode_encoding_1_box[ctxt_id, context_ind[i]] = torch.tensor(self.mode_1[info['mode'][:1]])
 
-                successes[context, i] = torch.tensor(info['success'])
-                successes_1[context, i] = torch.tensor(info['success_1'])
-                successes_2[context, i] = torch.tensor(info['success_2'])
-                # mean_distance[context, i] = torch.tensor(info['mean_distance'])
+            else:
+                pass
+
+            successes[ctxt_id, context_ind[i]] = torch.tensor(info['success'])
+            successes_1[ctxt_id, context_ind[i]] = torch.tensor(info['success_1'])
+            successes_2[ctxt_id, context_ind[i]] = torch.tensor(info['success_2'])
+            # mean_distance[context, i] = torch.tensor(info['mean_distance'])
 
     def cal_KL(self, mode_encoding, successes, prior_encoding, n_mode=6):
 
@@ -253,14 +247,37 @@ class Stacking_Sim(BaseSim):
         successes_1 = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
         successes_2 = torch.zeros((self.n_contexts, self.n_trajectories_per_context)).share_memory_()
 
-        contexts = np.arange(self.n_contexts)
+        # contexts = np.arange(self.n_contexts)
+        #
+        # workload = self.n_contexts // self.n_cores
+        #
+        # num_cpu = mp.cpu_count()
+        # cpu_set = list(range(num_cpu))
+        #
+        # self.n_cores = 1
+        #
+        # print("there are cpus: ", num_cpu)
+        self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
 
-        workload = self.n_contexts // self.n_cores
+        contexts = np.random.randint(0, 60, self.n_contexts) if self.n_contexts != 60 else np.arange(60)
+        context_idx_dict = {c: i for i, c in enumerate(contexts)}
 
-        num_cpu = mp.cpu_count()
-        cpu_set = list(range(num_cpu))
+        contexts = np.repeat(contexts, self.n_trajectories_per_context)
 
-        print("there are cpus: ", num_cpu)
+        context_ind = np.arange(self.n_trajectories_per_context)
+        context_ind = np.tile(context_ind, self.n_contexts)
+
+        repeat_nums = (self.n_contexts * self.n_trajectories_per_context) // self.n_cores
+        repeat_res = (self.n_contexts * self.n_trajectories_per_context) % self.n_cores
+
+        workload_array = np.ones([self.n_cores], dtype=int)
+        workload_array[:repeat_res] += repeat_nums
+        workload_array[repeat_res:] = repeat_nums
+
+        assert np.sum(workload_array) == len(contexts)
+
+        ind_workload = np.cumsum(workload_array)
+        ind_workload = np.concatenate(([0], ind_workload))
 
         ctx = mp.get_context('spawn')
 
@@ -271,8 +288,8 @@ class Stacking_Sim(BaseSim):
                     target=self.eval_agent,
                     kwargs={
                         "agent": agent,
-                        "contexts": contexts[i * workload:(i + 1) * workload],
-                        "n_trajectories": self.n_trajectories_per_context,
+                        "contexts": contexts[ind_workload[i]:ind_workload[i + 1]],
+                        "context_ind": context_ind[ind_workload[i]:ind_workload[i + 1]],
                         "mode_encoding": mode_encoding,
                         "mode_encoding_1_box": mode_encoding_1_box,
                         "mode_encoding_2_box": mode_encoding_2_box,
@@ -280,8 +297,9 @@ class Stacking_Sim(BaseSim):
                         "successes_1": successes_1,
                         "successes_2": successes_2,
                         "pid": i,
-                        "cpu_set": set(cpu_set[i:i + 1]),
-                        "if_vision": self.if_vision
+                        "cpu_set": set([int(cpu_cores[i])]),
+                        "if_vision": self.if_vision,
+                        "context_id_dict": context_idx_dict
                     },
                 )
                 print("Start {}".format(i))
@@ -291,7 +309,7 @@ class Stacking_Sim(BaseSim):
 
         else:
             self.eval_agent(agent, contexts, self.n_trajectories_per_context, mode_encoding, mode_encoding_1_box, mode_encoding_2_box,
-                            successes, successes_1, successes_2, set([0]), 0, if_vision=self.if_vision)
+                            successes, successes_1, successes_2, set([0]), 0, if_vision=self.if_vision, context_idx_dict=context_idx_dict)
 
         box1_success_rate = torch.mean(successes_1).item()
         box2_success_rate = torch.mean(successes_2).item()
@@ -302,19 +320,19 @@ class Stacking_Sim(BaseSim):
         entropy_2, KL_2 = self.cal_KL(mode_encoding_2_box, successes_2, self.mode_encoding_2, n_mode=6)
         entropy_3, KL_3 = self.cal_KL(mode_encoding, successes, self.mode_encoding_3, n_mode=6)
 
-        wandb.log({'score': (box1_success_rate + box2_success_rate + success_rate)})
-
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/entropy_3': entropy_3})
-        wandb.log({'Metrics/KL_3': KL_3})
-
-        wandb.log({'Metrics/successes_1_box': box1_success_rate})
-        wandb.log({'Metrics/entropy_1': entropy_1})
-        wandb.log({'Metrics/KL_1': KL_1})
-
-        wandb.log({'Metrics/successes_2_boxes': box2_success_rate})
-        wandb.log({'Metrics/entropy_2': entropy_2})
-        wandb.log({'Metrics/KL_2': KL_2})
+        # wandb.log({'score': (box1_success_rate + box2_success_rate + success_rate)})
+        #
+        # wandb.log({'Metrics/successes': success_rate})
+        # wandb.log({'Metrics/entropy_3': entropy_3})
+        # wandb.log({'Metrics/KL_3': KL_3})
+        #
+        # wandb.log({'Metrics/successes_1_box': box1_success_rate})
+        # wandb.log({'Metrics/entropy_1': entropy_1})
+        # wandb.log({'Metrics/KL_1': KL_1})
+        #
+        # wandb.log({'Metrics/successes_2_boxes': box2_success_rate})
+        # wandb.log({'Metrics/entropy_2': entropy_2})
+        # wandb.log({'Metrics/KL_2': KL_2})
 
         # print(f'Mean Distance {mean_distance.mean().item()}')
         print(f'Successrate {success_rate}')
@@ -323,6 +341,8 @@ class Stacking_Sim(BaseSim):
         # print(f'entropy {entropy_1}')
         # print(f'KL {KL_1}')
 
-        score = box1_success_rate + box2_success_rate + success_rate
+        # score = box1_success_rate + box2_success_rate + success_rate
 
-        return score, mode_encoding#, mean_distance
+        # return score, mode_encoding#, mean_distance
+        return {'box_1_success_rate': box1_success_rate, 'box_2_success_rate': box2_success_rate,
+                'box_3_success_rate': success_rate, 'entropy_1': entropy_1, 'entropy_2': entropy_2, 'entropy_3': entropy_3}
