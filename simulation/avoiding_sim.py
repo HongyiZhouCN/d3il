@@ -143,5 +143,5 @@ class Avoiding_Sim(BaseSim):
         # wandb.log({'Metrics/successes': success_rate})
         # wandb.log({'Metrics/entropy': entropy})
 
+        return {'success_rate': success_rate, 'entropy': entropy}
 
-        return success_rate, entropy

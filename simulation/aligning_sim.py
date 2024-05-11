@@ -221,4 +221,4 @@ class Aligning_Sim(BaseSim):
         # print(f'Successrate {success_rate}')
         # print(f'entropy {entropy}')
 
-        return success_rate, entropy.item(), mean_distance.mean().item()
+        return {'success_rate':success_rate, 'entropy': entropy.item(), 'mean_dist': mean_distance.mean().item()}

@@ -239,4 +239,4 @@ class Sorting_Sim(BaseSim):
         # print(f'num_complete {num_complete}')
         # print(f'KL {KL}')
 
-        return success_rate, entropy, num_complete
+        return {'success_rate': success_rate, 'entropy': entropy, 'num_complete': num_complete}
