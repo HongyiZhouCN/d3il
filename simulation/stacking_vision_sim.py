@@ -214,7 +214,7 @@ class Stacking_Sim(BaseSim):
                                                    / self.n_trajectories_per_context])
 
         mode_probs /= (mode_probs.sum(1).reshape(-1, 1) + 1e-12)
-        print(f'p(m|c) {mode_probs}')
+        # print(f'p(m|c) {mode_probs}')
 
         mode_probs = mode_probs[torch.nonzero(mode_probs.sum(1), as_tuple=True)[0]]
 
