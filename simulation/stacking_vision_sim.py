@@ -111,7 +111,7 @@ class Stacking_Sim(BaseSim):
         np.random.seed(pid)
         print(f'core {cpu_set} proceeds Context {contexts} with Rollout context_ind {context_ind}')
 
-        for i, context in enumerate(context_ind):
+        for i, context in enumerate(contexts):
 
             sim_step = 0
             agent.reset()
@@ -257,6 +257,9 @@ class Stacking_Sim(BaseSim):
         # self.n_cores = 1
         #
         # print("there are cpus: ", num_cpu)
+        #####################################################################
+        ## get assignment to cores
+        #####################################################################
         self.n_cores = len(cpu_cores) if cpu_cores is not None else 10
 
         contexts = np.random.randint(0, 60, self.n_contexts) if self.n_contexts != 60 else np.arange(60)
