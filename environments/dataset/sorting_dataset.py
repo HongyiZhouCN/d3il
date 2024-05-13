@@ -279,7 +279,7 @@ class Sorting_Img_Dataset(TrajectoryDataset):
         bp_cam_imgs = []
         inhand_cam_imgs = []
 
-        for file in tqdm(state_files[:100]):
+        for file in tqdm(state_files):
             with open(os.path.join(data_dir, 'state', file), 'rb') as f:
                 env_state = pickle.load(f)
 
@@ -295,33 +295,33 @@ class Sorting_Img_Dataset(TrajectoryDataset):
             file_name = os.path.basename(file).split('.')[0]
 
             ###############################################################
-            bp_images = []
+            # bp_images = []
             bp_imgs = glob.glob(data_dir + '/images/bp-cam/' + file_name + '/*')
             bp_imgs.sort(key=lambda x: int(os.path.basename(x).split('.')[0]))
-
-            for img in bp_imgs:
-                image = cv2.imread(img).astype(np.float32)
-                image = image.transpose((2, 0, 1)) / 255.
-
-                image = torch.from_numpy(image).to(self.device).float().unsqueeze(0)
-
-                bp_images.append(image)
-
-            # bp_images = torch.concatenate(bp_images, dim=0)
-            bp_images = torch.cat(bp_images, dim=0)
-            ################################################################
+            #
+            # for img in bp_imgs:
+            #     image = cv2.imread(img).astype(np.float32)
+            #     image = image.transpose((2, 0, 1)) / 255.
+            #
+            #     image = torch.from_numpy(image).to(self.device).float().unsqueeze(0)
+            #
+            #     bp_images.append(image)
+            #
+            # # bp_images = torch.concatenate(bp_images, dim=0)
+            # bp_images = torch.cat(bp_images, dim=0)
+            # ################################################################
             inhand_imgs = glob.glob(data_dir + '/images/inhand-cam/' + file_name + '/*')
             inhand_imgs.sort(key=lambda x: int(os.path.basename(x).split('.')[0]))
-            inhand_images = []
-            for img in inhand_imgs:
-                image = cv2.imread(img).astype(np.float32)
-                image = image.transpose((2, 0, 1)) / 255.
-
-                image = torch.from_numpy(image).to(self.device).float().unsqueeze(0)
-
-                inhand_images.append(image)
-            #inhand_images = torch.concatenate(inhand_images, dim=0)
-            inhand_images = torch.cat(inhand_images, dim=0)
+            # inhand_images = []
+            # for img in inhand_imgs:
+            #     image = cv2.imread(img).astype(np.float32)
+            #     image = image.transpose((2, 0, 1)) / 255.
+            #
+            #     image = torch.from_numpy(image).to(self.device).float().unsqueeze(0)
+            #
+            #     inhand_images.append(image)
+            # #inhand_images = torch.concatenate(inhand_images, dim=0)
+            # inhand_images = torch.cat(inhand_images, dim=0)
             ##################################################################
             # input_state = np.concatenate((robot_des_pos, robot_c_pos), axis=-1)
 
@@ -333,8 +333,8 @@ class Sorting_Img_Dataset(TrajectoryDataset):
             zero_action[0, :valid_len, :] = vel_state
             zero_mask[0, :valid_len] = 1
 
-            bp_cam_imgs.append(bp_images)
-            inhand_cam_imgs.append(inhand_images)
+            bp_cam_imgs.append(bp_imgs)
+            inhand_cam_imgs.append(inhand_imgs)
 
             inputs.append(zero_obs)
             actions.append(zero_action)
@@ -399,21 +399,21 @@ class Sorting_Img_Dataset(TrajectoryDataset):
         act = self.actions[i, start:end]
         mask = self.masks[i, start:end]
 
-        bp_imgs = self.bp_cam_imgs[i][start:end]
-        inhand_imgs = self.inhand_cam_imgs[i][start:end]
+        bp_img_files = self.bp_cam_imgs[i][start:end]
+        inhand_img_files = self.inhand_cam_imgs[i][start:end]
 
-        # bp_imgs = np.zeros((self.window_size, 3, 96, 96), dtype=np.float32)
-        # inhand_imgs = np.zeros((self.window_size, 3, 96, 96), dtype=np.float32)
-        #
-        # for num_frame, img_file in enumerate(bp_img_files):
-        #     image = cv2.imread(img_file).astype(np.float32)
-        #     bp_imgs[num_frame] = image.transpose((2, 0, 1)) / 255.
-        #
-        # for num_frame, img_file in enumerate(inhand_img_files):
-        #     image = cv2.imread(img_file).astype(np.float32)
-        #     inhand_imgs[num_frame] = image.transpose((2, 0, 1)) / 255.
-        #
-        # bp_imgs = torch.from_numpy(bp_imgs).to(self.device).float()
-        # inhand_imgs = torch.from_numpy(inhand_imgs).to(self.device).float()
+        bp_imgs = np.zeros((self.window_size, 3, 96, 96), dtype=np.float32)
+        inhand_imgs = np.zeros((self.window_size, 3, 96, 96), dtype=np.float32)
+
+        for num_frame, img_file in enumerate(bp_img_files):
+            image = cv2.imread(img_file).astype(np.float32)
+            bp_imgs[num_frame] = image.transpose((2, 0, 1)) / 255.
+
+        for num_frame, img_file in enumerate(inhand_img_files):
+            image = cv2.imread(img_file).astype(np.float32)
+            inhand_imgs[num_frame] = image.transpose((2, 0, 1)) / 255.
+
+        bp_imgs = torch.from_numpy(bp_imgs).to(self.device).float()
+        inhand_imgs = torch.from_numpy(inhand_imgs).to(self.device).float()
 
         return bp_imgs, inhand_imgs, obs, act, mask
