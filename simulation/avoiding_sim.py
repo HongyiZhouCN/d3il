@@ -105,27 +105,27 @@ class Avoiding_Sim(BaseSim):
         ctx = mp.get_context('spawn')
 
         p_list = []
-        if self.n_cores > 1:
-            for i in range(self.n_cores):
-                p = ctx.Process(
-                    target=self.eval_agent,
-                    kwargs={
-                        "agent": agent,
-                        "n_trajectories": self.n_trajectories // self.n_cores,
-                        "mode_encoding": mode_encoding,
-                        "successes": successes,
-                        "robot_c_pos": robot_c_pos,
-                        "pid": i,
-                        "cpu_set": set([int(cpu_cores[i])])
-                    },
-                )
-                # print("Start {}".format(i))
-                p.start()
-                p_list.append(p)
-            [p.join() for p in p_list]
+        # if self.n_cores > 1:
+        for i in range(self.n_cores):
+            p = ctx.Process(
+                target=self.eval_agent,
+                kwargs={
+                    "agent": agent,
+                    "n_trajectories": self.n_trajectories // self.n_cores,
+                    "mode_encoding": mode_encoding,
+                    "successes": successes,
+                    "robot_c_pos": robot_c_pos,
+                    "pid": i,
+                    "cpu_set": set([int(cpu_cores[i])])
+                },
+            )
+            # print("Start {}".format(i))
+            p.start()
+            p_list.append(p)
+        [p.join() for p in p_list]
 
-        else:
-            self.eval_agent(agent, self.n_trajectories, mode_encoding, successes, robot_c_pos, 0, set([0]))
+        # else:
+        #     self.eval_agent(agent, self.n_trajectories, mode_encoding, successes, robot_c_pos, 0, set([0]))
             
         # TODO: save robot_c_pos
 
